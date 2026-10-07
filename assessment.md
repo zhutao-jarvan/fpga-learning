@@ -48,6 +48,18 @@
 - UVM: not yet deeply involved.
 - Main UVM framework will be provided/developed by colleagues.
 
+## Practical learning status (Q12-Q40)
+
+- FIFO basics: understood occupancy/count semantics, empty/full conditions, and the difference between current state and next-state behavior.
+- FIFO edge cases: understood that simultaneous read/write can leave occupancy unchanged in a given design, but count updates should be implemented with clear, explicit state logic rather than relying on ambiguous multiple assignments.
+- AXI-Stream handshake: understood `transfer = TVALID && TREADY`; `TVALID` is source-side validity, `TREADY` is sink-side readiness, and a transfer only occurs when both are high.
+- Backpressure/stall: understood that when `TVALID=1` and `TREADY=0`, the current beat must remain stable across cycles until the sink accepts it.
+- TLAST: understood that `TLAST` marks the last beat of a packet, but the last beat still requires `TVALID && TREADY` to complete the transfer.
+- TKEEP: understood that `TKEEP` marks valid byte lanes in a beat; for a 64-bit AXIS interface, 1500-byte packet requires 188 beats, with a last beat potentially containing only a few valid bytes.
+- FIFO-to-AXIS model: understood the simple hardware pattern `tvalid = !empty` and `read_en = tvalid && tready`, with stable output data when no transfer occurs.
+- Current practical assessment: established basic FIFO and AXI-Stream valid/ready handshake intuition; able to reason about backpressure, TLAST, TKEEP, and stable-beat behavior in simple hardware timing flows.
+- These concepts are mainly understood through Q&A and timing reasoning; they still need consolidation through actual RTL, testbench, VCS simulation, and Verdi waveform observation.
+
 ## Current learning gaps
 
 - More RTL practice.
@@ -67,6 +79,6 @@
 
 ## Assessment checkpoint
 
-- Interactive FPGA capability assessment completed through Q11.
-- The user prefers the assessment to proceed one question at a time.
-- The next assessment question should be Q12.
+- Q1-Q40 completed.
+- The next stage begins with AXI-Stream/FIFO RTL practical work.
+- The user prefers the assessment to proceed one question at a time, but the current learning-state record is now updated to reflect the practical understanding gained through Q12-Q40.
