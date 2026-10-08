@@ -142,8 +142,20 @@ module axis_fifo_tb;
     // 第四个过程块(initial)：
     initial begin
         // '$name(arguments);' 表示： 表示调用一个仿真器提供的系统任务或系统函数。
-        $dumpfile("axis_fifo.vcd");
-        $dumpvars(0, axis_fifo_tb);
+        // 正式 VCS/Verdi 流程用 ENABLE_FSDB 生成 FSDB；未定义时保留 VCD fallback。
+        `ifdef ENABLE_FSDB
+            string fsdb_file;
+            fsdb_file = "axis_fifo.fsdb";
+            // 可用 +fsdbfile=name.fsdb 覆盖默认文件名，便于不同 testcase 隔离波形。
+            $value$plusargs("fsdbfile=%s", fsdb_file);
+            $fsdbDumpfile(fsdb_file);
+            $fsdbDumpvars(0, axis_fifo_tb);
+            $fsdbDumpMDA();
+        `else
+            // VCD 是跨工具 fallback；本学习流程的波形分析优先使用 FSDB/Verdi。
+            $dumpfile("axis_fifo.vcd");
+            $dumpvars(0, axis_fifo_tb);
+        `endif
 
         // Two synchronous reset cycles.
         // repeat 的一般语法是：
