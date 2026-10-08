@@ -26,10 +26,16 @@ module axis_fifo_tb;
     logic        stalled_last;
     integer phase;
 
+    // 实例化语法： module_name [#(parameter_values)] instance_name (port_connections);
+    // '(.*)': 将被实例化模块的端口，与当前作用域中同名的信号自动连接。
     axis_fifo dut (.*);
 
+    // 第一个 always 过程块：无限重复执行后面的语句。
+    // #5：延迟 5 个仿真时间单位。
+    // = ： 阻塞赋值
     always #5 clk = ~clk;
 
+    // 创建一个可以重复被调用的 task （类似于软件的函数）
     task automatic fail(input [1023:0] message);
         begin
             $display("ERROR at cycle %0d: %0s", cycle, message);
@@ -39,6 +45,7 @@ module axis_fifo_tb;
 
     // Inputs change away from the sampling edge, making the handshake easy
     // to inspect in a waveform and avoiding testbench/DUT race conditions.
+    // 第二个 always 过程块：下降沿产生下一次上升沿需要的 pop & push 和测试数据激励
     always @(negedge clk) begin
         if (rst) begin
             s_axis_tvalid <= 1'b0;
@@ -65,6 +72,8 @@ module axis_fifo_tb;
     end
 
     // Scoreboard samples handshakes and output data before the DUT NBA update.
+    // ': monitor' 是给 ‘begin ... end’ 的语句块命名，方便仿真器查看波形
+    // 第三个 always 过程块：上升沿执行 Scoreboard
     always @(posedge clk) begin : monitor
         logic push_now;
         logic pop_now;
@@ -130,20 +139,28 @@ module axis_fifo_tb;
         end
     end
 
+    // 第四个过程块(initial)：
     initial begin
+        // '$name(arguments);' 表示： 表示调用一个仿真器提供的系统任务或系统函数。
         $dumpfile("axis_fifo.vcd");
         $dumpvars(0, axis_fifo_tb);
 
         // Two synchronous reset cycles.
-        repeat (2) @(posedge clk);
-        @(negedge clk) rst = 1'b0;
+        // repeat 的一般语法是：
+        //      repeat (次数表达式)
+        //          statement;
+        // @ 可以理解为：暂停当前过程，直到指定事件发生，然后继续执行后面的语句。
+        repeat (2) @(posedge clk); // 等待两个上升沿
+        @(negedge clk) rst = 1'b0; // 下降沿清零rst后等 1ns
         #1;
         if (m_axis_tvalid !== 1'b0)
             fail("FIFO is not empty after reset");
 
+        // 前 6 连续 beat 属于 phase 0
         phase = 0;
         wait (sent == 6);
         phase = 1;
+        // 中 40 非连续beat 属于 phase 1，测试反压
         wait (sent == 46);
 
         // Drain the remaining beats, then verify empty behavior.
