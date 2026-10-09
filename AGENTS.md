@@ -77,6 +77,15 @@ The primary objective is learning practical FPGA development through progressive
 
 ## Repository conventions
 
+- Use `learning-plan.md` for the roadmap and `learning-progress.md` for current
+  overall status, completion evidence, remaining gaps, and the next task.
+- Plan against 1–2 hours/day (10–15 hours/week), but advance by demonstrated
+  understanding and exercise deliverables, not calendar months. When time is
+  abundant, arrange later-stage work as soon as prerequisites are met; allow
+  pauses and resume with a focused review of the last exercise.
+- Preserve daily notes and assessment history; do not infer mastery from elapsed
+  time or generated simulation artifacts alone.
+
 - Keep the repository structure modest and understandable.
 - Preserve existing files such as README, assessment notes, the learning plan, and cheatsheet.
 - Favor small, focused modules and exercises.

@@ -1,1 +1,9 @@
-Notes directory — add notes here.
+# 学习日志
+
+这里保存按日期记录的学习过程、波形观察、问答结论与工具经验。
+总体状态和下一步见 [learning-progress.md](../learning-progress.md)，
+阶段目标见 [learning-plan.md](../learning-plan.md)。
+
+日志建议记录本次任务、实际观察/测试结果、理解的内容、未解决问题和下次入口。
+达到关键里程碑或暂停/恢复时同步更新总体进度；不必在多个文件重复每日细节。
+已有日志作为历史保留。
