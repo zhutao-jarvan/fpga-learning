@@ -64,6 +64,15 @@ module axis_fifo_tb;
         assert property (p_output_stable_while_stalled)
         else fail("SVA: output changed while backpressured");
 
+    property p_valid_occupancy;
+        @(posedge clk) disable iff(rst)
+            !rst |-> (dut.occupancy <= 3'd4);
+    endproperty
+
+    a_valid_occupancy:
+        assert property (p_valid_occupancy) 
+        else fail("SVA: invalid occupancy value");
+
     // Inputs change away from the sampling edge, making the handshake easy
     // to inspect in a waveform and avoiding testbench/DUT race conditions.
     // 第二个 always 过程块：下降沿产生下一次上升沿需要的 pop & push 和测试数据激励
