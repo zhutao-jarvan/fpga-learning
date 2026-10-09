@@ -153,8 +153,8 @@ module axis_fifo_tb;
                 saw_full = 1;
             if ((received != 0) && (dut.occupancy == 0))
                 saw_empty_after_data = 1;
-            if (dut.occupancy == 4 && s_axis_tready)
-                fail("TREADY asserted while FIFO was full");
+            if (dut.occupancy == 4 && !pop_now && s_axis_tready)
+                fail("TREADY asserted while FIFO was full but no pop");
             if (dut.occupancy == 0 && m_axis_tvalid)
                 fail("TVALID asserted while FIFO was empty");
         end

@@ -32,8 +32,17 @@ module axis_fifo (
 
     // 这一段组合逻辑只是用来表示数据关系，数据 push & pop 由时序逻辑控制
     always_comb begin
-        // 只要FIFO没满, @s_axis_tready 就一直拉高，表示可写
-        s_axis_tready = (occupancy < DEPTH);
+        // 只要FIFO没满或者确定会发生pop, @s_axis_tready 就一直拉高，表示可写
+        if (occupancy < DEPTH)
+            s_axis_tready = 1'b1;
+        else begin
+           // occupancy == DEPTH
+           if (pop)
+                s_axis_tready = 1'b1;
+           else
+                s_axis_tready = 1'b0;
+        end
+
         // 只要FIFO没空, @m_axis_tvalid 就一直拉高，表示可读 */
         m_axis_tvalid = (occupancy != 0);
 
