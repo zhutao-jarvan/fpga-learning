@@ -43,6 +43,27 @@ module axis_fifo_tb;
         end
     endtask
 
+    // Once the output is stalled, the presented beat must remain unchanged.
+    // 以下代码块含义(property此处是对信号在多个时钟采样点之间应该满足的关系进行描述。
+    //      p_output_stable_while_stalled 是属性名称)：
+    // - @(posedge clk)：只在每个上升沿采样；
+    // - disable iff (rst)：禁用并终止该属性当前正在进行的检查；其中 iff = if and only if （当且仅当）
+    // - 左侧：本拍输出有效但未被接收；
+    // - |=> 称为 non-overlapped implication（非重叠蕴含）；
+    //     前件 |=> 后件
+    //     如果本次上升沿前件成立，那么在下一个上升沿检查后件。
+    //   注意： a |-> b  表示重叠蕴含：从当前采样周期开始检查 b
+    // - $stable(...)：三个信号拼接后比较每个周期是否一致
+    property p_output_stable_while_stalled;
+        @(posedge clk) disable iff (rst)
+            m_axis_tvalid && !m_axis_tready
+            |=> $stable({m_axis_tvalid, m_axis_tdata, m_axis_tlast});
+    endproperty
+
+    a_output_stable_while_stalled:
+        assert property (p_output_stable_while_stalled)
+        else fail("SVA: output changed while backpressured");
+
     // Inputs change away from the sampling edge, making the handshake easy
     // to inspect in a waveform and avoiding testbench/DUT race conditions.
     // 第二个 always 过程块：下降沿产生下一次上升沿需要的 pop & push 和测试数据激励
