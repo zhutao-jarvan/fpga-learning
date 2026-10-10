@@ -70,7 +70,7 @@ module axis_fifo_tb;
     endproperty
 
     a_valid_occupancy:
-        assert property (p_valid_occupancy) 
+        assert property (p_valid_occupancy)
         else fail("SVA: invalid occupancy value");
 
     // Inputs change away from the sampling edge, making the handshake easy

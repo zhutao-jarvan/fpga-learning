@@ -83,6 +83,13 @@ The primary objective is learning practical FPGA development through progressive
   understanding and exercise deliverables, not calendar months. When time is
   abundant, arrange later-stage work as soon as prerequisites are met; allow
   pauses and resume with a focused review of the last exercise.
+- Treat the 10–15 hours/week figure as a planning baseline, not a deadline or
+  fixed amount of progress. First-time exercises involving new SystemVerilog
+  syntax, state machines, reset behavior, or waveform debugging may take
+  multiple sessions; use observed effort to recalibrate later estimates.
+- Once the user has demonstrated understanding with code, waveform evidence,
+  or a correct explanation, do not repeatedly re-confirm the same point unless
+  a new change introduces a relevant risk.
 - Preserve daily notes and assessment history; do not infer mastery from elapsed
   time or generated simulation artifacts alone.
 

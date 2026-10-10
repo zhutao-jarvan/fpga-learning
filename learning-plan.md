@@ -29,6 +29,10 @@ architecture, register maps, module names, addresses, and implementation details
   对尚未覆盖的 FSM、复位等基础保留补齐任务。
 - 每次安排学习前，先查看当前状态和可用时间，再给出可在当次完成的小任务；
   时间充足则连续安排后续任务，避免把每日任务固定成 1–2 小时上限。
+- 首次接触新的 SystemVerilog 语法、FSM、复位或波形调试时，单项练习可能
+  跨越多个学习时段；用实际完成时间校准后续任务，不把 10–15 小时/周换算成
+  固定数量的练习。已经通过代码、波形或解释确认的内容不重复安排确认，除非
+  后续修改引入了新的风险。
 
 计划内容和先修顺序保存在本文件；实际完成证据、当前任务、暂停/恢复位置和
 下一步统一保存在 [learning-progress.md](learning-progress.md)。每日细节保存在

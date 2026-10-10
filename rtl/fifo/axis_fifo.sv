@@ -30,6 +30,41 @@ module axis_fifo (
     wire push = s_axis_tvalid && s_axis_tready;
     wire pop  = m_axis_tvalid && m_axis_tready;
 
+    typedef enum logic {
+        IDLE,
+        IN_PACKET
+    } state_t;
+
+    state_t state, next_state;
+    logic handshake;
+    assign handshake = push;
+    always_comb begin
+        next_state = state;
+
+        if (handshake) begin
+            case (state)
+                IDLE: begin
+                    if (!s_axis_tlast)
+                        next_state = IN_PACKET;
+                end
+
+                IN_PACKET: begin
+                    if (s_axis_tlast)
+                        next_state = IDLE;
+                end
+
+                default: next_state = IDLE;
+            endcase
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (rst)
+            state <= IDLE;
+        else
+            state <= next_state;
+    end
+
     // 这一段组合逻辑只是用来表示数据关系，数据 push & pop 由时序逻辑控制
     always_comb begin
         // 只要FIFO没满或者确定会发生pop, @s_axis_tready 就一直拉高，表示可写
