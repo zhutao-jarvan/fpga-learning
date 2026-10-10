@@ -59,6 +59,10 @@ next_state    = IN_PACKET
 - 独立 `axis_fifo_fsm_tb` 已完成 VCS 编译和仿真。
 - 仿真输出：`PASS: directed FSM transition check passed`。
 - 已在 Verdi 中确认上述两个上升沿前后的状态、组合 next-state 和 handshake 信号。
+- 同步复位场景也已完成：在 `45 ns` 上升沿前，`rst=1` 且
+  `dut.state=IN_PACKET`；该上升沿之后，`dut.state` 更新为 `IDLE`。
+- 复位场景只验证同步状态寄存器在上升沿更新，没有增加 `TLAST=1` 的状态
+  转换场景，也没有引入 UVM 或复杂 FSM。
 
 ## 掌握说明
 
@@ -69,6 +73,11 @@ next_state    = IN_PACKET
 3. 能解释无 handshake 时 `TLAST` 的变化不能推动 packet FSM 转换；
 4. 能使用独立 VCS 构建目录和 FSDB/Verdi 检查一个定向 FSM 场景。
 
+5. 能从波形中识别同步复位的关键时序：`rst` 拉高本身不立即改变状态，
+   状态在下一个有效上升沿更新。
+
 ## 下一步
 
-先进行一次最小同步复位场景检查，确认 `rst=1` 的上升沿把 `state` 置为 `IDLE`；暂不引入新的 packet 状态或 UVM。
+阶段 1 的 FSM/同步复位交付已完成。下一步进入阶段 2，先定义最小 CSR
+寄存器规格，再实现一个只支持单个未完成事务的 AXI4-Lite 读写路径；暂不引入
+UVM、CDC、突发事务或复杂寄存器副作用。

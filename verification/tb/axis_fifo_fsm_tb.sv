@@ -90,6 +90,29 @@ module axis_fifo_fsm_tb;
         if (dut.state != 1)
             fail("1 dut.state != IN_PACKET");
 
+        // rst setting tb
+        @(negedge clk);
+        rst = 1'b1;
+        s_axis_tvalid = 1'b0;
+        s_axis_tlast = 1'b0;
+
+        @(posedge clk);
+        #1;
+        if (rst != 1)
+            fail("2 rst != 1");
+        if (dut.handshake != 0)
+            fail("2 Handshake != 0");
+        // IDLE == 1
+        if (dut.state != 0)
+            fail("2 dut.state != IDLE");
+        if (s_axis_tvalid == 0)
+            if (dut.push != 0)
+                fail("2 s_axis_tvalid == 0, but dut.push != 0");
+
+        @(negedge clk);
+        rst = 1'b0;
+        #10;
+
         if (errors == 0)
             $display("PASS: directed FSM transition check passed");
         else
