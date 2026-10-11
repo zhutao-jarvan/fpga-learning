@@ -43,8 +43,8 @@ module axi_lite_csr_tb;
     integer wrq_phase;
 
     // Write related
-    logic [31:0] wrq_data;
     logic [31:0] wrq_addr = 32'b0000_0000;
+    assign s_axi_wdata = 32'b0000_0001 + wresp_cnt;
 
     wire aw_transfer = s_axi_awvalid && s_axi_awready;
     wire w_transfer = s_axi_wvalid && s_axi_wready;
@@ -68,13 +68,6 @@ module axi_lite_csr_tb;
     endtask
 
     assign s_axi_awaddr = wrq_addr;
-    assign s_axi_wdata  = wrq_data;
-    always_comb begin
-        wrq_data = 32'b0000_0000;
-
-        if (s_axi_wvalid)
-            wrq_data = 32'b0000_0000 + wrq_phase;
-    end
 
     // 仿照一个一个 AXI4 Lite 的 Maser 行为给 Slave 提供激励
     // Write CSR 
@@ -125,7 +118,7 @@ module axi_lite_csr_tb;
             end
 
             // Master finish transfer, init for next
-            if (s_axi_bready) begin
+            if (b_transfer) begin
                 s_axi_awvalid <= 1'b0;
                 s_axi_wvalid  <= 1'b0;
                 wresp_cnt <= wresp_cnt + 1;

@@ -104,16 +104,25 @@ module axi_lite_csr (
         end
     end
 
-    // 拉高 s_axi_bvalid，如果收齐了 aw/w 的数据后
+    // 根据aw/w数据收集状态来设置
     always_comb begin
+        // 默认可以接收 aw/w
+        s_axi_bvalid = 1'b0;
+        s_axi_awready = 1'b1; // aw
+        s_axi_wready  = 1'b1; // w
+
         if (wq_valid) begin
-            s_axi_bvalid = 1'b1;
-            s_axi_awready <= 1'b0; // aw
-            s_axi_wready  <= 1'b0; // w
-        end else begin
+            s_axi_bvalid = 1'b1;  // b only
+            s_axi_awready = 1'b0;
+            s_axi_wready  = 1'b0;
+        end else if (waddr_valid) begin
             s_axi_bvalid = 1'b0;
-            s_axi_awready <= 1'b1; // aw
-            s_axi_wready  <= 1'b1; // w
+            s_axi_awready = 1'b0;
+            s_axi_wready  = 1'b1; // w only
+        end else if (wdata_valid) begin
+            s_axi_bvalid = 1'b0;
+            s_axi_awready = 1'b1; // aw only
+            s_axi_wready  = 1'b0;
         end
     end
 
