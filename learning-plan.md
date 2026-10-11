@@ -5,17 +5,22 @@ This file contains high-level learning goals and milestones for FPGA study.
 - Topics: digital logic, RTL design, timing, clock domain crossing (CDC), FIFOs, verification (UVM), synthesis, implementation.
 - Milestones: complete basic RTL exercises, build and verify simple projects, learn FPGA toolflow.
 
-## Six-month practical roadmap
+## Six core stages and adaptive reinforcement
 
 The roadmap targets practical participation in an industry FPGA networking team.
 It records only general industry techniques and deliberately avoids product-specific
 architecture, register maps, module names, addresses, and implementation details.
 
+The first six stages form the core roadmap. Two reinforcement stages follow the
+integrated project and are selected from demonstrated gaps rather than from a
+fixed list. The full program is roughly eight months in scale, but progress is
+based on evidence and pauses do not count against a calendar deadline.
+
 ### 时间基准与实际推进方式
 
 本路线以每天约 1–2 小时、每周约 10–15 小时的有效学习时间为规划基准。
-“六个月”表示约 26 个学习周，总投入粗估约 260–390 小时，用于判断内容规模，
-不是固定的日历截止日期，也不是必须完成的计时指标。
+六个核心阶段加两个强化阶段总体约按八个月估算，用于判断内容规模，不是固定的
+日历截止日期，也不是必须完成的计时指标。
 
 下文的 Month 1–6 同时代表阶段 1–6，每个阶段约按 4–5 个学习周安排。
 实际执行以先修能力、练习结果和阶段交付物为依据：
@@ -38,6 +43,23 @@ architecture, register maps, module names, addresses, and implementation details
 下一步统一保存在 [learning-progress.md](learning-progress.md)。每日细节保存在
 `notes/`，能力评估历史保存在 `assessment.md`，不在计划里重复维护进度勾选。
 
+### 练习模式与选择原则
+
+后续练习采用三种模式：从零构建、骨架补全、阅读调试。首次接触且工程风险较高
+的核心机制，至少安排一个小型从零实例；已经证明理解的语法、样板代码和机械展开
+不重复手写，转为补全、评审、故障定位和需求修改。
+
+从零构建不设置固定比例。出现以下情况时优先安排：新硬件机制、工程常见高风险点、
+用户重复出现的错误，或者尚不能预测逐拍波形的设计。每次练习开始时明确采用哪种
+模式以及原因。
+
+完整练习的结束流程为：
+
+```text
+设计意图 -> 行为预测 -> 仿真检查 -> 波形解释
+         -> 工程模式与权衡 -> 尚未覆盖的风险
+```
+
 ### 近期阶段推进门槛
 
 | 推进方向 | 进入条件 | 下一项实践 |
@@ -52,8 +74,10 @@ architecture, register maps, module names, addresses, and implementation details
 
 The goal is not equal mastery of every topic.
 
-- Be able to implement and debug: synchronous RTL, ready/valid streaming, FIFOs,
-  basic AXI4-Lite CSR blocks, common CDC patterns, and focused testbenches.
+- Be able to reason about, make focused implementation changes to, and debug:
+  synchronous RTL, ready/valid streaming, FIFOs, basic AXI4-Lite CSR blocks,
+  common CDC patterns, and focused testbenches. Build new critical mechanisms
+  from scratch when that is needed to establish the underlying timing model.
 - Be able to read and discuss: full AXI4, Avalon-MM/Avalon-ST-style buses,
   interconnect and protocol bridges, PCIe MMIO, Ethernet MAC data paths, and
   external-memory interfaces.
@@ -210,6 +234,33 @@ Deliverable:
 - complete a small networking-oriented design containing a streaming data path,
   buffering/backpressure, at least one CDC boundary, a software-visible debug CSR
   block, focused assertions/testbench coverage, and a basic synthesis/timing report.
+
+### Reinforcement stage 1: Targeted reconstruction and fault exercises
+
+After the six core stages, select two to four high-value gaps using evidence from
+code reviews, failed predictions, simulations, and waveform analysis. Prioritize
+protocol-correctness risks, reset/CDC risks, repeated personal mistakes, inability
+to predict behavior, and finally ordinary syntax issues.
+
+Each selected gap should use a small from-scratch RTL example, a directed
+testbench, a key waveform explanation, and an engineering-pattern summary. Do
+not invent weaknesses in advance merely to fill this stage.
+
+Deliverable:
+
+- close the selected gaps with focused evidence and explain why each pattern is
+  safe, where it fails, and how a production implementation would differ.
+
+### Reinforcement stage 2: Engineering transfer and unfamiliar-code practice
+
+Work with at least one module that the user did not write from scratch. Explain
+its interface, state, and timing; complete one requirements change, add one
+directed testcase, and diagnose one fault using simulation and waveforms.
+
+Deliverable:
+
+- demonstrate that the learned design and debug methods transfer to unfamiliar
+  engineering code rather than only to previously rehearsed exercises.
 
 ## Register-interface review checklist
 

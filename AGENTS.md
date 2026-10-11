@@ -26,7 +26,9 @@ The goal is not to become an FPGA expert in isolation. The goal is to become pro
 
 ## Learning goals
 
-This repository is intended to support progressive, practical learning over roughly six months.
+This repository is intended to support six progressive core stages followed by
+two adaptive reinforcement stages, with roughly eight months as a scale estimate
+rather than a fixed deadline.
 
 The work should emphasize:
 - practical examples over long theoretical explanations
@@ -56,18 +58,74 @@ When helping with this repository:
 13. Do not silently make large structural changes to the repository.
 14. When a task is educational, explain important design decisions instead of only providing code.
 
+## AI-assisted learning and exercise selection
+
+Use three exercise modes according to learning value:
+
+1. From-scratch construction for a new, important hardware mechanism.
+2. Guided completion where a scaffold is provided and the user implements the
+   key state, handshake, boundary, or checking logic.
+3. Reading and debugging where the user predicts, reviews, verifies, and makes
+   focused changes to existing code.
+
+Do not require every RTL module or testbench to start from an empty file. A new
+critical mechanism should still be constructed in one small example. Prefer
+from-scratch work for ready/valid behavior, reset, FSMs, FIFO boundaries, CDC,
+CSR access semantics, pipeline stalls, arbitration, and other areas that are
+high-risk, commonly error-prone, repeatedly misunderstood by the user, or whose
+cycle-by-cycle behavior the user cannot yet predict.
+
+Once understanding has been demonstrated, use scaffolds and existing code
+instead of repeating syntax, boilerplate, or mechanical expansion. AI may
+provide port scaffolding, repetitive logic, basic testbench tasks, build scripts,
+and reference implementations. The user should continue to own specification
+reasoning, state and timing analysis, boundary cases, waveform prediction, code
+review, and focused behavioral changes.
+
+Before starting a new exercise that the user did not build from scratch, first
+explain its goal, main modules, key data/control paths, the user's task,
+explicit non-goals, and acceptance method. Then ask at least five questions
+about that exercise's core structure and task to confirm the user is not heading
+in the wrong direction before implementation begins. Do this once per complete
+exercise, not for its individual testcases, small features, or routine edits;
+repeat only the necessary parts if the exercise scope changes materially.
+
+AI-generated code is not accepted merely because it compiles. It must be
+explained, simulated, checked, and inspected in waveforms in proportion to its
+risk. Measure understanding by the ability to explain design choices,
+cycle-by-cycle behavior, failure modes, and the impact of a change, rather than
+by authorship or lines of code.
+
+## Engineering-pattern review
+
+After each complete exercise or meaningful sub-goal has passed its stated
+checks, add a short engineering-oriented explanation covering:
+
+1. The design pattern or engineering technique demonstrated.
+2. The problem it solves and why engineering teams use it.
+3. Its key invariants, tradeoffs, and common mistakes.
+4. What the educational implementation omits compared with production RTL.
+5. Where it appears in networking data paths, control planes, drivers, or debug.
+
+Do not repeat this review after every small edit or code-review iteration. Add
+it when a complete learning objective has evidence, and record it in the
+corresponding learning note when that exercise calls for a note.
+
 ## Working style for new learning exercises
 
 For new learning exercises:
 
 1. First explain the goal.
 2. Identify the FPGA concepts involved.
-3. Implement the smallest reasonable example.
-4. Add a testbench when appropriate.
-5. Explain expected waveform and timing behavior.
-6. Run available checks or simulations.
-7. Summarize what was learned.
-8. Update learning notes only when explicitly requested or when the task clearly calls for it.
+3. Select the from-scratch, guided-completion, or reading-and-debugging mode and
+   explain why it fits the learning goal.
+4. Construct, complete, or review the smallest reasonable example for that mode.
+5. Add or adapt a testbench when appropriate.
+6. Explain expected waveform and timing behavior.
+7. Run available checks or simulations.
+8. Summarize what was learned and, after a completed objective, explain the
+   applicable engineering pattern.
+9. Update learning notes only when explicitly requested or when the task clearly calls for it.
 
 ## Important constraint
 
