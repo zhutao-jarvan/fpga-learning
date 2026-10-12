@@ -38,6 +38,9 @@ module axi_lite_csr (
     output logic [31:0] s_axi_rdata,
     input  logic        s_axi_rready
 );
+    localparam logic [31:0] CTRL_ADDR   = 32'h0000_0000;
+    localparam logic [31:0] STATUS_ADDR = 32'h0000_0004;
+
     // CSR register define
     logic [31:0] ctrl_rw;   // ADDR 0x0000, RW
     logic [31:0] status_o;  // ADDR 0x0004, RO
@@ -162,7 +165,78 @@ module axi_lite_csr (
 
 
     // CSR Read related RTL section
+    wire ar_transfer = s_axi_arvalid && s_axi_arready;
+    wire r_transfer  = s_axi_rvalid && s_axi_rready;
 
+    logic raddr_valid;
+    logic [31:0] raddr;
+    assign s_axi_rresp = RESP_OKEY;
 
+    typedef enum logic {
+        R_IDLE,
+        R_REQ_SENT // main used state
+    } rstate_t;
+
+    rstate_t rstate, next_rstate;
+
+    always_comb begin
+        next_rstate = rstate;
+
+        if (ar_transfer || r_transfer) begin
+            case (rstate)
+            R_IDLE: begin
+                if (ar_transfer)
+                    next_rstate = R_REQ_SENT;
+            end
+
+            R_REQ_SENT: begin
+                if (r_transfer)
+                    next_rstate = R_IDLE;
+            end
+
+            default: next_rstate = R_IDLE;
+            endcase
+        end
+    end
+
+    // 根据r数据收集状态来设置
+    always_comb begin
+        if (raddr_valid) begin
+            s_axi_arready = 1'b0;
+            s_axi_rvalid  = 1'b1; // r
+        end else begin
+            s_axi_arready = 1'b1; // ar
+            s_axi_rvalid  = 1'b0;
+        end
+    end
+
+    // Address route
+    always_comb begin : reg_addr
+        case (raddr)
+        CTRL_ADDR:   s_axi_rdata = ctrl_rw;
+        STATUS_ADDR: s_axi_rdata = status_o;
+        default: s_axi_rdata = 32'hDEAD_BEEF;
+        endcase
+    end
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            raddr_valid   <= 1'b0;
+            rstate        <= R_IDLE;
+        end else begin
+            rstate <= next_rstate;
+
+            // AR ch M -> S
+            if (ar_transfer && (raddr_valid != 1'b1)) begin
+                raddr <= s_axi_araddr;
+                raddr_valid <= 1'b1;
+            end
+
+            // handshake and clear 'R ch S -> M'
+            if (r_transfer && (rstate == R_REQ_SENT)) begin
+                raddr_valid  <= 1'b0;
+            end
+        end
+    end
 
 endmodule

@@ -27,12 +27,16 @@ module axi_lite_csr_tb;
     integer aw_handshakes = 0;
     integer w_handshakes = 0;
     integer b_handshakes = 0;
+    integer ar_handshakes = 0;
+    integer r_handshakes = 0;
     logic test_done = 1'b0;
     string scenario;
 
     wire aw_transfer = s_axi_awvalid && s_axi_awready;
     wire w_transfer  = s_axi_wvalid && s_axi_wready;
     wire b_transfer  = s_axi_bvalid && s_axi_bready;
+    wire ar_transfer = s_axi_arvalid && s_axi_arready;
+    wire r_transfer  = s_axi_rvalid && s_axi_rready;
 
     axi_lite_csr dut (.*);
 
@@ -111,6 +115,36 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    // S -> M : 下降沿 AR 通道写入地址，拉高 valid
+    // 一直等到 ar_transfer
+    // 拉低 valid
+    task automatic drive_ar(input logic [31:0] address);
+        begin
+            @(negedge clk);
+            s_axi_araddr  = address;
+            s_axi_arvalid = 1'b1;
+            do @(posedge clk); while (!ar_transfer);
+            @(negedge clk) s_axi_arvalid = 1'b0;
+        end
+    endtask
+
+    //  S -> M : R 通道 发送数据和应答
+    // Master 下降沿拉高 ready 等待上升沿握手
+    // 握手后，读取 data 和 response
+    // 最后拉低 ready
+    task automatic accept_r(
+        output logic [31:0] data,
+        output logic [1:0] response
+    );
+        begin
+            @(negedge clk) s_axi_rready = 1'b1;
+            do @(posedge clk); while (!r_transfer);
+            data = s_axi_rdata;
+            response = s_axi_rresp;
+            @(negedge clk) s_axi_rready = 1'b0;
+        end
+    endtask
+
     task automatic check_single_write(input logic [31:0] expected_data);
         begin
             #1;
@@ -169,6 +203,31 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    task automatic run_read_ctrl;
+        logic [31:0] read_data;
+        logic [1:0] read_response;
+        begin
+            // Establish a known CTRL value before testing the read path.
+            fork
+                drive_aw(32'h0000_0000);
+                drive_w(32'hCAFE_1237, 4'b1111);
+            join
+            accept_b();
+            check_single_write(32'hCAFE_1237);
+
+            drive_ar(32'h0000_0000);
+            accept_r(read_data, read_response);
+
+            #1;
+            check(ar_handshakes == 1, "expected exactly one AR handshake");
+            check(r_handshakes == 1, "expected exactly one R handshake");
+            check(read_response == 2'b00, "RRESP is not OKAY");
+            check(read_data == 32'hCAFE_1237, "RDATA did not return CTRL");
+            check(!s_axi_rvalid, "RVALID did not clear after handshake");
+            check(s_axi_arready, "ARREADY did not recover after R handshake");
+        end
+    endtask
+
     // Observation only: this process never drives a DUT input.
     always @(posedge clk) begin
         cycle = cycle + 1;
@@ -176,6 +235,8 @@ module axi_lite_csr_tb;
             if (aw_transfer) aw_handshakes = aw_handshakes + 1;
             if (w_transfer)  w_handshakes  = w_handshakes + 1;
             if (b_transfer)  b_handshakes  = b_handshakes + 1;
+            if (ar_transfer) ar_handshakes = ar_handshakes + 1;
+            if (r_transfer)  r_handshakes  = r_handshakes + 1;
         end
     end
 
@@ -214,8 +275,10 @@ module axi_lite_csr_tb;
             run_aw_w_parallel();
         else if (scenario == "b_backpressure")
             run_b_backpressure();
+        else if (scenario == "read_ctrl")
+            run_read_ctrl();
         else begin
-            fail("unknown scenario; use aw_first, aw_w_parallel, or b_backpressure");
+            fail("unknown scenario; use aw_first, aw_w_parallel, b_backpressure, or read_ctrl");
         end
 
         test_done = 1'b1;

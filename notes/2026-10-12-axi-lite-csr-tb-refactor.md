@@ -83,3 +83,20 @@ timeout 和 ready/valid 时序理解。确认后再实现最小读路径，并�
 “覆盖未完成事务的保存槽”或“违反单 outstanding 约束”；READY 是由组合逻辑
 反映内部资源是否可用，不是被单独释放的时序状态。综合判断：当前 AW/W/B 子目标
 理解合格，可以进入 AR/R 读路径。
+
+## 当日结束时的 AR/R 进度
+
+- 用户完成第一版最小 AR/R RTL，并修正 AR handshake 时误锁存 `AWADDR` 的问题；
+  当前已正确锁存 `ARADDR`。
+- TB 增加 `drive_ar`、`accept_r`、AR/R handshake 计数和独立的 `read_ctrl`
+  scenario。该场景先将 `CTRL` 写为 `32'hCAFE_1237`，再读取 `0x0000_0000`。
+- 仿真确认 AR handshake 和 R handshake 各发生一次，`RDATA` 正确返回
+  `32'hCAFE_1237`，`RRESP` 为 OKAY；用户也已在波形中确认读数据路径工作。
+- 当前测试仍明确失败：R handshake 后 `RVALID` 没有清零，`ARREADY` 没有恢复。
+  因此“数据能够读出”不等于“读事务完整结束”。已有三个写场景继续通过。
+
+当日到此结束，不在最后十分钟内继续修改 RTL。明天的第一个动作：运行
+`read_ctrl` 单场景，观察 R handshake 上升沿的 `r_transfer`、`raddr_valid` 和
+`rstate`，检查清除 `raddr_valid` 的条件是否使用了正确的响应通道 handshake。
+修复并确认接口恢复后，再新增两拍 `RREADY=0` 场景，检查 `RVALID/RDATA/RRESP`
+稳定以及反压解除后的状态释放。
