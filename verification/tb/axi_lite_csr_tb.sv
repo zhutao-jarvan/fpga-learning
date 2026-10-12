@@ -28,6 +28,7 @@ module axi_lite_csr_tb;
     integer w_handshakes = 0;
     integer b_handshakes = 0;
     logic test_done = 1'b0;
+    string scenario;
 
     wire aw_transfer = s_axi_awvalid && s_axi_awready;
     wire w_transfer  = s_axi_wvalid && s_axi_wready;
@@ -110,6 +111,64 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    task automatic check_single_write(input logic [31:0] expected_data);
+        begin
+            #1;
+            check(aw_handshakes == 1, "expected exactly one AW handshake");
+            check(w_handshakes == 1, "expected exactly one W handshake");
+            check(b_handshakes == 1, "expected exactly one B handshake");
+            check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
+            check(dut.ctrl_rw == expected_data, "ctrl_rw did not receive WDATA");
+        end
+    endtask
+
+    task automatic run_aw_first;
+        begin
+            drive_aw(32'h0000_0000);
+            drive_w(32'hCAFE_1234, 4'b1111);
+            accept_b();
+            check_single_write(32'hCAFE_1234);
+        end
+    endtask
+
+    task automatic run_aw_w_parallel;
+        begin
+            fork
+                drive_aw(32'h0000_0000);
+                drive_w(32'hCAFE_1235, 4'b1111);
+            join
+            accept_b();
+            check_single_write(32'hCAFE_1235);
+        end
+    endtask
+
+    task automatic run_b_backpressure;
+        begin
+            // BREADY remains low while the response is pending.
+            @(negedge clk) s_axi_bready = 1'b0;
+            fork
+                drive_aw(32'h0000_0000);
+                drive_w(32'hCAFE_1236, 4'b1111);
+            join
+
+            repeat (2) begin
+                @(posedge clk);
+                #1;
+                check(!s_axi_awready, "AWREADY rose during B backpressure");
+                check(!s_axi_wready, "WREADY rose during B backpressure");
+                check(s_axi_bvalid, "BVALID dropped during B backpressure");
+                check(s_axi_bresp == 2'b00, "BRESP changed during B backpressure");
+            end
+
+            accept_b();
+            #1;
+            check(!s_axi_bvalid, "BVALID did not clear after handshake");
+            check(s_axi_awready, "AWREADY did not recover after B handshake");
+            check(s_axi_wready, "WREADY did not recover after B handshake");
+            check_single_write(32'hCAFE_1236);
+        end
+    endtask
+
     // Observation only: this process never drives a DUT input.
     always @(posedge clk) begin
         cycle = cycle + 1;
@@ -143,64 +202,21 @@ module axi_lite_csr_tb;
             $dumpvars(0, axi_lite_csr_tb);
         `endif
 
+        if (!$value$plusargs("scenario=%s", scenario))
+            scenario = "aw_first";
+        $display("Running scenario: %s", scenario);
+
         reset_dut();
 
-        // Scenario 1: one AW-first write, with W delayed by a cycle.
-        drive_aw(32'h0000_0000);
-        drive_w(32'hCAFE_1234, 4'b1111);
-        accept_b();
-
-        #1;
-        check(aw_handshakes == 1, "expected exactly one AW handshake");
-        check(w_handshakes == 1, "expected exactly one W handshake");
-        check(b_handshakes == 1, "expected exactly one B handshake");
-        check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
-        check(dut.ctrl_rw == 32'hCAFE_1234, "ctrl_rw did not receive WDATA");
-
-        repeat (5) @(posedge clk);
-        // Scenario 2: parallel AW & W
-        fork
-            drive_aw(32'h0000_0000);
-            drive_w(32'hCAFE_1235, 4'b1111);
-        join
-        accept_b();
-
-        #1;
-        check(aw_handshakes == 2, "expected exactly 2 AW handshake");
-        check(w_handshakes == 2, "expected exactly 2 W handshake");
-        check(b_handshakes == 2, "expected exactly 2 B handshake");
-        check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
-        check(dut.ctrl_rw == 32'hCAFE_1235, "ctrl_rw did not receive WDATA");
-
-        repeat (5) @(posedge clk);
-        // Scenario 3:  Master b backpressure check
-        fork
-            drive_aw(32'h0000_0000);
-            drive_w(32'hCAFE_1236, 4'b1111);
-        join
-
-        repeat (2) @(posedge clk) begin
-            if (s_axi_awready)
-                fail("Master backpressure fail: s_axi_awready == 1");
-            if (s_axi_wready)
-                fail("Master backpressure fail: s_axi_wready == 1");
-            if (!s_axi_bvalid)
-                fail("Master backpressure fail: s_axi_bvalid == 0");
-            if (s_axi_bresp != 2'b0)
-                fail("Master backpressure fail: s_axi_bresp == 2'b0");
-        end;
-
-        accept_b();
-
-        #1;
-        check(!s_axi_bvalid, "BVALID did not clear after handshake");
-        check(s_axi_awready, "AWREADY did not recover after b handshake");
-        check(s_axi_wready, "WREADY did not recover after b handshake");
-        check(aw_handshakes == 3, "expected exactly 3 AW handshake");
-        check(w_handshakes == 3, "expected exactly 3 W handshake");
-        check(b_handshakes == 3, "expected exactly 3 B handshake");
-        check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
-        check(dut.ctrl_rw == 32'hCAFE_1236, "ctrl_rw did not receive WDATA");
+        if (scenario == "aw_first")
+            run_aw_first();
+        else if (scenario == "aw_w_parallel")
+            run_aw_w_parallel();
+        else if (scenario == "b_backpressure")
+            run_b_backpressure();
+        else begin
+            fail("unknown scenario; use aw_first, aw_w_parallel, or b_backpressure");
+        end
 
         test_done = 1'b1;
         if (errors == 0)
