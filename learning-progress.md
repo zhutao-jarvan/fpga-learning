@@ -1,6 +1,6 @@
 # 总体学习进度
 
-最后更新：2026-10-11。当前状态依据仓库截至 2026-10-11 的学习日志；
+最后更新：2026-10-12。当前状态依据仓库截至 2026-10-12 的学习日志；
 没有记录的练习不推定已经完成。
 
 ## 使用方式
@@ -49,6 +49,12 @@
 - 2026-10-11 学习策略调整：新的关键机制、工程高风险点和个人重复错误优先安排
   小型从零构建；已理解的样板工作改用骨架补全或阅读调试。学习证据以设计推理、
   波形预测、代码评审、故障定位和定向修改为主，不以独立编写全部代码为目标。
+- 2026-10-12 完成 AW/W/B 写路径 directed-TB 子目标：重构单一 driver 和
+  scenario/driver/monitor/checker 分层；验证 AW-first、AW/W 并行和 BREADY 两拍
+  反压；在 B handshake 后检查 BVALID 清零、AWREADY/WREADY 恢复和 CTRL 写入；
+  增加 `+scenario=<name>` 选择与 Makefile 场景参数。三个场景均通过轻量仿真，
+  并在 Verdi 中完成关键波形解释。进入 AR/R 前仍需进行理解确认；阶段 2 的
+  W-first、地址错误、WSTRB 和寄存器访问类型测试尚未完成。
 
 ## 阶段总览
 
@@ -103,5 +109,7 @@
   独立 testbench、`IDLE -> IN_PACKET` 转换、无 handshake 状态保持及 Verdi 证据。
 - [2026-10-11 AXI4-Lite CSR 写路径起步](notes/2026-10-11-axi-lite-csr-write.md)：
   最小寄存器规格、AW/W 独立接收、B 响应、VCS/Verdi 波形证据和恢复点。
+- [2026-10-12 AXI4-Lite CSR TB 重构与 B 反压](notes/2026-10-12-axi-lite-csr-tb-refactor.md)：
+  并行 AW/W、B 反压、单场景运行、Makefile 参数化和波形解释。
 - [工具环境](notes/2026-10-08-tool-environment.md)：两台机器与 NFS 共享工作流。
 - 2026-10-09：确认采用弹性学习节奏；完成 FIFO 状态分析、最小 SVA 和 MMIO/CSR 预习。
