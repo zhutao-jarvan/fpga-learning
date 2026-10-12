@@ -145,7 +145,7 @@ module axi_lite_csr_tb;
 
         reset_dut();
 
-        // Scenario layer: one AW-first write, with W delayed by a cycle.
+        // Scenario 1: one AW-first write, with W delayed by a cycle.
         drive_aw(32'h0000_0000);
         drive_w(32'hCAFE_1234, 4'b1111);
         accept_b();
@@ -158,7 +158,7 @@ module axi_lite_csr_tb;
         check(dut.ctrl_rw == 32'hCAFE_1234, "ctrl_rw did not receive WDATA");
 
         repeat (5) @(posedge clk);
-        // Scenario parallel AW & W
+        // Scenario 2: parallel AW & W
         fork
             drive_aw(32'h0000_0000);
             drive_w(32'hCAFE_1235, 4'b1111);
@@ -171,6 +171,36 @@ module axi_lite_csr_tb;
         check(b_handshakes == 2, "expected exactly 2 B handshake");
         check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
         check(dut.ctrl_rw == 32'hCAFE_1235, "ctrl_rw did not receive WDATA");
+
+        repeat (5) @(posedge clk);
+        // Scenario 3:  Master b backpressure check
+        fork
+            drive_aw(32'h0000_0000);
+            drive_w(32'hCAFE_1236, 4'b1111);
+        join
+
+        repeat (2) @(posedge clk) begin
+            if (s_axi_awready)
+                fail("Master backpressure fail: s_axi_awready == 1");
+            if (s_axi_wready)
+                fail("Master backpressure fail: s_axi_wready == 1");
+            if (!s_axi_bvalid)
+                fail("Master backpressure fail: s_axi_bvalid == 0");
+            if (s_axi_bresp != 2'b0)
+                fail("Master backpressure fail: s_axi_bresp == 2'b0");
+        end;
+
+        accept_b();
+
+        #1;
+        check(!s_axi_bvalid, "BVALID did not clear after handshake");
+        check(s_axi_awready, "AWREADY did not recover after b handshake");
+        check(s_axi_wready, "WREADY did not recover after b handshake");
+        check(aw_handshakes == 3, "expected exactly 3 AW handshake");
+        check(w_handshakes == 3, "expected exactly 3 W handshake");
+        check(b_handshakes == 3, "expected exactly 3 B handshake");
+        check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
+        check(dut.ctrl_rw == 32'hCAFE_1236, "ctrl_rw did not receive WDATA");
 
         test_done = 1'b1;
         if (errors == 0)
