@@ -157,6 +157,21 @@ module axi_lite_csr_tb;
         check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
         check(dut.ctrl_rw == 32'hCAFE_1234, "ctrl_rw did not receive WDATA");
 
+        repeat (5) @(posedge clk);
+        // Scenario parallel AW & W
+        fork
+            drive_aw(32'h0000_0000);
+            drive_w(32'hCAFE_1235, 4'b1111);
+        join
+        accept_b();
+
+        #1;
+        check(aw_handshakes == 2, "expected exactly 2 AW handshake");
+        check(w_handshakes == 2, "expected exactly 2 W handshake");
+        check(b_handshakes == 2, "expected exactly 2 B handshake");
+        check(s_axi_bresp == 2'b00, "BRESP is not OKAY");
+        check(dut.ctrl_rw == 32'hCAFE_1235, "ctrl_rw did not receive WDATA");
+
         test_done = 1'b1;
         if (errors == 0)
             $display("PASS: AXI LITE CSR checks passed (%0d cycles)", cycle);
