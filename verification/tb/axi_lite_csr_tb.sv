@@ -228,6 +228,40 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    task automatic run_r_backpressure;
+        logic [31:0] data;
+        logic [1:0] response;
+
+        fork
+            drive_aw(32'h0000_0000);
+            drive_w(32'hCAFE_1238, 4'b1111);
+        join
+
+        accept_b();
+        // Done: write 32'hCAFE_1238 to register CTRL
+
+        drive_ar(32'h0000_0000);
+        // Check the backpressure effected
+        repeat (2) begin
+            @(posedge clk);
+            #1;
+            check(!s_axi_arready, "ARREADY rose during R backpressure");
+            check(s_axi_rdata == 32'hCAFE_1238, "RDATA changed during R backpressure");
+            check(s_axi_rvalid, "RVALID dropped during R backpressure");
+            check(s_axi_rresp == 2'b00, "BRESP changed during R backpressure");
+        end
+
+        accept_r(data, response);
+
+        check(ar_handshakes == 1, "expected exactly one AR handshake");
+        check(r_handshakes == 1, "expected exactly one R handshake");
+
+        check(s_axi_arready, "ARREADY did not return 1");
+        check(!s_axi_rvalid, "RVALID did not return 0");
+        check(response == 2'b00, "run_r_backpressure read error BRESP");
+        check(data == 32'hCAFE_1238, "run_r_backpressure read error data");
+    endtask
+
     // Observation only: this process never drives a DUT input.
     always @(posedge clk) begin
         cycle = cycle + 1;
@@ -277,6 +311,8 @@ module axi_lite_csr_tb;
             run_b_backpressure();
         else if (scenario == "read_ctrl")
             run_read_ctrl();
+        else if (scenario == "r_backpressure")
+            run_r_backpressure();
         else begin
             fail("unknown scenario; use aw_first, aw_w_parallel, b_backpressure, or read_ctrl");
         end
