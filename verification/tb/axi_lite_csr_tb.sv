@@ -165,6 +165,41 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    task automatic run_w_first;
+        begin
+            logic [31:0] old_ctrl_rw = dut.ctrl_rw;
+
+            drive_w(32'hCAFE_1239, 4'b1111);
+            // Check aw_handshakes==0 和 ctrl_rw 未更新
+            check(aw_handshakes == 0, "expected exactly one AW handshake");
+            check(w_handshakes == 1, "expected exactly one W handshake");
+            check(b_handshakes == 0, "expected exactly one B handshake");
+
+            repeat (2) begin
+                @(posedge clk);
+                #1;
+                check(s_axi_awready, "W first but awready == 0");
+                check(!s_axi_wready, "W already handshake but still high");
+                check(dut.ctrl_rw == old_ctrl_rw, "ctrl_rw changed only w handshake");
+            end
+
+            drive_aw(32'h0000_0000);
+            check(aw_handshakes == 1, "expected exactly one AW handshake");
+            check(w_handshakes == 1, "expected exactly one W handshake");
+            check(b_handshakes == 0, "expected exactly one B handshake");
+
+            accept_b();
+            check(aw_handshakes == 1, "expected exactly one AW handshake");
+            check(w_handshakes == 1, "expected exactly one W handshake");
+            check(b_handshakes == 1, "expected exactly one B handshake");
+
+            check_single_write(32'hCAFE_1239);
+            check(!s_axi_bvalid, "BVALID did not clear after W-first B handshake");
+            check(s_axi_awready, "AWREADY did not recover after W-first B handshake");
+            check(s_axi_wready, "WREADY did not recover after W-first B handshake");
+        end
+    endtask
+
     task automatic run_aw_w_parallel;
         begin
             fork
@@ -305,6 +340,8 @@ module axi_lite_csr_tb;
 
         if (scenario == "aw_first")
             run_aw_first();
+        else if (scenario == "w_first")
+            run_w_first();
         else if (scenario == "aw_w_parallel")
             run_aw_w_parallel();
         else if (scenario == "b_backpressure")

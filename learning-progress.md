@@ -1,6 +1,6 @@
 # 总体学习进度
 
-最后更新：2026-10-14。当前状态依据仓库截至 2026-10-14 的学习日志；
+最后更新：2026-10-16。当前状态依据仓库截至 2026-10-16 的学习日志；
 没有记录的练习不推定已经完成。
 
 ## 使用方式
@@ -64,6 +64,16 @@
   恢复及 AR/R 各一次握手。`r_backpressure`、`read_ctrl` 和三个已有写场景
   全部通过；Verdi 确认 95/105 ns 响应保持、115 ns 后读状态释放。
   本次没有修改 RTL；2026-10-12 的释放失败未复现，根因仍未知。
+- 2026-10-14 完成 W-first 写事务 directed TB：W handshake 后在两个连续
+  上升沿检查 `AWREADY=1`、`WREADY=0`、AW/B 尚未 handshake 且 CTRL 未更新；
+  随后完成 AW/B handshake，检查 `CTRL=32'hCAFE_1239` 以及 B handshake
+  后 `BVALID` 清零、AWREADY/WREADY 恢复。`w_first` 仿真通过 10 cycles，
+  未修改 RTL。W-first 的 Verdi 波形尚待用户观察和解释。
+- 2026-10-16 回归六个场景：`w_first` 10、`aw_first` 9、`aw_w_parallel` 7、
+  `b_backpressure` 9、`read_ctrl` 11、`r_backpressure` 12 cycles，均为 VCS
+  仿真 PASS。VCS 启动脚本的 `#!/bin/sh -h` 与当前 `/bin/sh` 不兼容；通过
+  `bash` 调用该脚本完成构建，随后运行同一 `simv`。这只构成仿真证据；
+  W-first 波形验收、写地址语义复查和非法地址练习均待继续。
 
 ## 阶段总览
 
@@ -87,9 +97,11 @@
 
 按下面顺序推进，每项通过解释、代码或测试结果确认后再安排下一项：
 
-1. 恢复时简短复查 `r_backpressure` 的 95/105/115 ns 波形，并运行读场景确认
-   响应保持与 handshake 后资源释放；若旧故障重现，先保存失败日志和波形。
-2. 补充 W 先于 AW、同步复位、合法/非法地址和 RO 写保护；第一轮写操作保持
+1. 先由用户预测并在 Verdi 核对 W-first 的 W 握手、两个等待周期、AW 握手和
+   B 握手，解释 `AWREADY/WREADY/BVALID`、保存槽及 `ctrl_rw` 的变化；
+   仿真 PASS 不代替该波形验收。
+2. 复查 AWADDR 在当前写路径中的实际用途，再补充同步复位、合法/非法地址和
+   RO 写保护；第一轮写操作保持
    `WSTRB=4'b1111`，基本路径稳定后再检查字节使能。
 3. 扩展 AR/R 读路径，定向测试 `STATUS` 和非法地址；该部分继续由用户负责
    关键握手、响应保持和检查逻辑。
@@ -122,5 +134,7 @@
   并行 AW/W、B 反压、单场景运行、Makefile 参数化和波形解释。
 - [2026-10-14 AXI4-Lite CSR 读反压](notes/2026-10-14-axi-lite-csr-read-backpressure.md)：
   两拍 R 反压、响应稳定性、读事务释放和五个场景回归。
+- [2026-10-16 AXI4-Lite CSR 六场景回归](notes/2026-10-16-axi-lite-csr-regression.md)：
+  六个场景的 VCS 结果、工具启动问题和 W-first 波形待验收点。
 - [工具环境](notes/2026-10-08-tool-environment.md)：两台机器与 NFS 共享工作流。
 - 2026-10-09：确认采用弹性学习节奏；完成 FIFO 状态分析、最小 SVA 和 MMIO/CSR 预习。
