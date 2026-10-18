@@ -115,6 +115,18 @@ module axi_lite_csr_tb;
         end
     endtask
 
+    // S -> M : 下降沿拉高 s_axi_bready，准备接收 b
+    // 一直等到 b_transfer 在上升沿被检查到
+    // 拉低 s_axi_bready，完成传输
+    task automatic accept_b2(output logic [1:0] response);
+        begin
+            @(negedge clk) s_axi_bready = 1'b1;
+            do @(posedge clk); while (!b_transfer); // 等到握手的上升沿
+            response = s_axi_bresp; // 在 B handshake 的上升沿采样
+            @(negedge clk) s_axi_bready = 1'b0;
+        end
+    endtask
+
     // S -> M : 下降沿 AR 通道写入地址，拉高 valid
     // 一直等到 ar_transfer
     // 拉低 valid
@@ -297,6 +309,46 @@ module axi_lite_csr_tb;
         check(data == 32'hCAFE_1238, "run_r_backpressure read error data");
     endtask
 
+    task automatic run_w_badaddr;
+        logic [31:0] data;
+        logic [1:0] response;
+
+        fork
+            drive_aw(32'h0000_0000);
+            drive_w(32'hCAFE_123a, 4'b1111);
+        join
+        accept_b2(response);
+        check(aw_handshakes == 1, "expected exactly 1 AW handshake");
+        check(w_handshakes == 1, "expected exactly 1 W handshake");
+        check(b_handshakes == 1, "expected exactly 1 B handshake");
+        check(response == 2'b00, "expected response == RESP_OKEY(0)");
+
+        fork
+            drive_aw(32'h0000_FFFF);
+            drive_w(32'hCAFE_123b, 4'b1111);
+        join
+
+        // Accept B and response
+        accept_b2(response);
+        check(aw_handshakes == 2, "expected exactly 2 AW handshake");
+        check(w_handshakes == 2, "expected exactly 2 W handshake");
+        check(b_handshakes == 2, "expected exactly 2 B handshake");
+        check(response == 2'b01, "expected response == RESP_SLVERR(1)");
+        check(!s_axi_bvalid, "BVALID did not clear after bad-address B handshake");
+        check(s_axi_awready && s_axi_wready, "write channels did not recover after bad-address B handshake");
+
+        // Read the result
+        drive_ar(32'h0000_0000);
+        // Check the backpressure effected
+        accept_r(data, response);
+
+        check(ar_handshakes == 1, "expected exactly one AR handshake");
+        check(r_handshakes == 1, "expected exactly one R handshake");
+
+        check(response == 2'b00, "expected response == RESP_OKEY(0)");
+        check(data == 32'hCAFE_123a, "expected read data 32'hCAFE_123a");
+    endtask
+
     // Observation only: this process never drives a DUT input.
     always @(posedge clk) begin
         cycle = cycle + 1;
@@ -350,6 +402,8 @@ module axi_lite_csr_tb;
             run_read_ctrl();
         else if (scenario == "r_backpressure")
             run_r_backpressure();
+        else if (scenario == "w_badaddr")
+            run_w_badaddr();
         else begin
             fail("unknown scenario; use aw_first, aw_w_parallel, b_backpressure, or read_ctrl");
         end

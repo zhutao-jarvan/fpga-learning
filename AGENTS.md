@@ -82,13 +82,16 @@ and reference implementations. The user should continue to own specification
 reasoning, state and timing analysis, boundary cases, waveform prediction, code
 review, and focused behavioral changes.
 
-Before starting a new exercise that the user did not build from scratch, first
+Before starting a new exercise that the user did not build from scratch, briefly
 explain its goal, main modules, key data/control paths, the user's task,
-explicit non-goals, and acceptance method. Then ask at least five questions
-about that exercise's core structure and task to confirm the user is not heading
-in the wrong direction before implementation begins. Do this once per complete
-exercise, not for its individual testcases, small features, or routine edits;
-repeat only the necessary parts if the exercise scope changes materially.
+explicit non-goals, and acceptance method, in proportion to the exercise's
+complexity. Ask focused questions only when the answers could change the design,
+timing expectations, or acceptance checks, or reveal a meaningful gap in the
+user's understanding. There is no fixed question count; skip questions when
+prior code, explanations, or waveform evidence already establish the needed
+understanding. Do not pause implementation for routine testcases, small features,
+or edits within an established exercise. Revisit only the parts affected by a
+material change in scope or a newly observed misunderstanding.
 
 AI-generated code is not accepted merely because it compiles. It must be
 explained, simulated, checked, and inspected in waveforms in proportion to its

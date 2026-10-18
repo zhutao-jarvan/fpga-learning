@@ -62,7 +62,6 @@ module axi_lite_csr (
     wire wq_valid = waddr_valid && wdata_valid;
     logic [31:0] waddr;
     logic [31:0] wdata;
-    assign s_axi_bresp = RESP_OKEY;
 
     typedef enum logic [1:0] {
         W_IDLE,
@@ -108,7 +107,7 @@ module axi_lite_csr (
     end
 
     // 根据aw/w数据收集状态来设置
-    always_comb begin
+    always_comb begin : s_write_handshakes
         // 默认可以接收 aw/w
         s_axi_bvalid = 1'b0;
         s_axi_awready = 1'b1; // aw
@@ -126,6 +125,15 @@ module axi_lite_csr (
             s_axi_bvalid = 1'b0;
             s_axi_awready = 1'b1; // aw only
             s_axi_wready  = 1'b0;
+        end
+    end
+
+    always_comb begin : b_response
+        s_axi_bresp = RESP_OKEY;
+
+        if (wq_valid && (wstate == W_REQ_SENT)) begin
+            if (waddr != CTRL_ADDR)
+                s_axi_bresp = RESP_SLVERR;
         end
     end
 
@@ -150,10 +158,9 @@ module axi_lite_csr (
             end
 
             // B ch S -> M
-            if (wq_valid && (wstate == W_REQ_SENT)) begin
-                // 实际要对比地址，但是现在只有一个可以写的地址，就直接写了
-                ctrl_rw <= wdata; // 不考虑同时 READ ctrl_rw
-            end
+            if (wq_valid && (wstate == W_REQ_SENT))
+                if (waddr == CTRL_ADDR)
+                    ctrl_rw <= wdata;
 
             // handshake and clear 'B ch S -> M'
             if (b_transfer && (wstate == W_REQ_SENT)) begin
