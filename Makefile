@@ -26,6 +26,7 @@ help:
 	@echo "  make axis_fifo_fsm   Compile, simulate, and open axis_fifo_fsm_tb in Verdi"
 	@echo "  make axi_lite_csr    Compile, simulate, and open axi_lite_csr_tb in Verdi"
 	@echo "  make axi_lite_csr_sim AXI_CSR_SCENARIO=b_backpressure"
+	@echo "  make axi_lite_csr_sim AXI_CSR_SCENARIO=read_status"
 	@echo ""
 	@echo "Each target also has _compile, _sim, and _verdi variants."
 

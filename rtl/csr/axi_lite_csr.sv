@@ -230,6 +230,7 @@ module axi_lite_csr (
         if (rst) begin
             raddr_valid   <= 1'b0;
             rstate        <= R_IDLE;
+            status_o      <= 32'h0000_0000;
         end else begin
             rstate <= next_rstate;
 

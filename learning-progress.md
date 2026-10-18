@@ -80,6 +80,14 @@
   化为基于保存地址的响应，并仅在 CTRL 地址更新 `ctrl_rw`。`w_badaddr` 通过 15
   cycles；下一步为 STATUS 合法读取和读路径验收。记录见
   `notes/2026-10-18-axi-lite-csr-address-response.md`。
+- 2026-10-18 完成 STATUS 合法读取 directed TB：将只读 `status_o` 的教学版复位值
+  定义为 `32'h0000_0000`，新增 `read_status` 场景，验证 STATUS AR handshake、
+  RVALID/RDATA/RRESP、两拍 RREADY 反压稳定性，以及 R handshake 后 RVALID 清零和
+  ARREADY 恢复。场景通过 8 cycles；`aw_first`、`w_first`、`aw_w_parallel`、
+  `b_backpressure`、`read_ctrl`、`r_backpressure`、`w_badaddr` 回归全部通过。
+  用户已在 Verdi 中确认 45 ns 完成 `raddr=0x4` AR handshake，响应保持到 75 ns，
+  `ARREADY` 在 70 ns 恢复。记录见 `notes/2026-10-18-axi-lite-csr-status-read.md`。
+  下一步为 WSTRB 定向写和阶段 2 工程模式复盘。
 
 ## 阶段总览
 

@@ -309,6 +309,36 @@ module axi_lite_csr_tb;
         check(data == 32'hCAFE_1238, "run_r_backpressure read error data");
     endtask
 
+    task automatic run_read_status;
+        logic [31:0] data;
+        logic [1:0] response;
+
+        // STATUS is read-only and is reset to zero in this minimal exercise.
+        drive_ar(32'h0000_0004);
+        check(ar_handshakes == 1, "expected exactly one STATUS AR handshake");
+        check(s_axi_rvalid, "STATUS RVALID did not assert after AR handshake");
+        check(!s_axi_arready, "ARREADY remained high while STATUS response pending");
+
+        // Hold RREADY low and verify the complete response remains stable.
+        repeat (2) begin
+            @(posedge clk);
+            #1;
+            check(s_axi_rvalid, "STATUS RVALID dropped during R backpressure");
+            check(s_axi_rdata == 32'h0000_0000,
+                  "STATUS RDATA changed or did not return reset value");
+            check(s_axi_rresp == 2'b00, "STATUS RRESP is not OKAY");
+            check(!s_axi_arready, "ARREADY rose during STATUS R backpressure");
+            check(r_handshakes == 0, "STATUS R handshake occurred while RREADY was low");
+        end
+
+        accept_r(data, response);
+        check(r_handshakes == 1, "expected exactly one STATUS R handshake");
+        check(data == 32'h0000_0000, "STATUS RDATA is not the reset value");
+        check(response == 2'b00, "STATUS RRESP is not OKAY after handshake");
+        check(!s_axi_rvalid, "RVALID did not clear after STATUS R handshake");
+        check(s_axi_arready, "ARREADY did not recover after STATUS R handshake");
+    endtask
+
     task automatic run_w_badaddr;
         logic [31:0] data;
         logic [1:0] response;
@@ -402,6 +432,8 @@ module axi_lite_csr_tb;
             run_read_ctrl();
         else if (scenario == "r_backpressure")
             run_r_backpressure();
+        else if (scenario == "read_status")
+            run_read_status();
         else if (scenario == "w_badaddr")
             run_w_badaddr();
         else begin
