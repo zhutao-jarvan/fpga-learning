@@ -181,6 +181,7 @@ module axi_lite_csr (
             waddr_valid   <= 1'b0;
             wdata_valid   <= 1'b0;
             wstate        <= W_IDLE;
+            ctrl_rw       <= 32'h0000_0000;
         end else begin
             wstate <= next_wstate;
 
