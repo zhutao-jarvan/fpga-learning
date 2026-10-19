@@ -339,6 +339,48 @@ module axi_lite_csr_tb;
         check(s_axi_arready, "ARREADY did not recover after STATUS R handshake");
     endtask
 
+    task automatic run_wstrb;
+        logic [31:0] data;
+        logic [1:0] response;
+        begin
+            // Establish all four CTRL byte lanes with a full write.
+            fork
+                drive_aw(32'h0000_0000);
+                drive_w(32'hCAFE_123A, 4'b1111);
+            join
+            accept_b2(response);
+            check(aw_handshakes == 1, "WSTRB setup expected one AW handshake");
+            check(w_handshakes == 1, "WSTRB setup expected one W handshake");
+            check(b_handshakes == 1, "WSTRB setup expected one B handshake");
+            check(response == 2'b00, "WSTRB setup BRESP is not OKAY");
+            check(dut.ctrl_rw == 32'hCAFE_123A, "WSTRB setup did not initialize CTRL");
+
+            // 0101 updates byte lanes 2 and 0, preserving lanes 3 and 1.
+            fork
+                drive_aw(32'h0000_0000);
+                drive_w(32'hBEEF_5678, 4'b0101);
+            join
+            accept_b2(response);
+            check(aw_handshakes == 2, "WSTRB partial write expected two AW handshakes");
+            check(w_handshakes == 2, "WSTRB partial write expected two W handshakes");
+            check(b_handshakes == 2, "WSTRB partial write expected two B handshakes");
+            check(response == 2'b00, "WSTRB partial write BRESP is not OKAY");
+
+            // CA FE 12 3A -> (lane 2=EF, lane 0=78) -> CA EF 12 78.
+            check(dut.ctrl_rw == 32'hCAEF_1278,
+                  "CTRL byte lanes do not match WSTRB=0101 semantics");
+
+            drive_ar(32'h0000_0000);
+            accept_r(data, response);
+            check(ar_handshakes == 1, "WSTRB readback expected one AR handshake");
+            check(r_handshakes == 1, "WSTRB readback expected one R handshake");
+            check(response == 2'b00, "WSTRB readback RRESP is not OKAY");
+            check(data == 32'hCAEF_1278, "WSTRB readback CTRL value is incorrect");
+            check(!s_axi_rvalid, "WSTRB readback RVALID did not clear");
+            check(s_axi_arready, "WSTRB readback ARREADY did not recover");
+        end
+    endtask
+
     task automatic run_w_badaddr;
         logic [31:0] data;
         logic [1:0] response;
@@ -434,6 +476,8 @@ module axi_lite_csr_tb;
             run_r_backpressure();
         else if (scenario == "read_status")
             run_read_status();
+        else if (scenario == "wstrb")
+            run_wstrb();
         else if (scenario == "w_badaddr")
             run_w_badaddr();
         else begin

@@ -87,14 +87,21 @@
   `b_backpressure`、`read_ctrl`、`r_backpressure`、`w_badaddr` 回归全部通过。
   用户已在 Verdi 中确认 45 ns 完成 `raddr=0x4` AR handshake，响应保持到 75 ns，
   `ARREADY` 在 70 ns 恢复。记录见 `notes/2026-10-18-axi-lite-csr-status-read.md`。
-  下一步为 WSTRB 定向写和阶段 2 工程模式复盘。
+- 2026-10-18 完成 WSTRB directed TB：保存 W handshake 的 `WSTRB`，按 byte lane
+  合并 `WDATA` 与现有 CTRL；`WSTRB=1111` 初始化后，`WSTRB=0101` 将
+  `CAFE_123A` 更新为 `CAEF_1278`。`wstrb` 场景通过 15 cycles，最新 RTL/TB 的
+  八个场景全部回归通过。首次失败是 checker 将 lane 2 期望为 `BE`，已根据
+  `BEEF_5678` 的实际 byte 分解修正。记录见
+  `notes/2026-10-18-axi-lite-csr-wstrb.md`。阶段 2 剩余重点是工程模式复盘和
+  收尾检查。用户已在 Verdi 中确认两次 W handshake 为 45/85 ns、两次 B handshake
+  为 65/105 ns，`ctrl_rw` 在 55/95 ns 更新，随后 CTRL 读回 `CAEF_1278`。
 
 ## 阶段总览
 
 | 阶段（原月份） | 状态 | 完成证据 / 剩余重点 |
 | --- | --- | --- |
 | 1：RTL、仿真与波形 | 已完成 | FIFO 波形追踪、满载吞吐修改、VCS 自检、最小 SVA、FSM 和同步复位定向波形均有证据 |
-| 2：调试寄存器与控制面 | 进行中 | AW/W/B、CTRL 读取、B/R 两拍反压和非法地址响应已通过定向检查；待 STATUS 读取、WSTRB 和收尾 |
+| 2：调试寄存器与控制面 | 进行中 | AW/W/B、CTRL/STATUS 读取、B/R 两拍反压、非法地址响应和 WSTRB 已通过定向检查；待工程模式复盘和收尾 |
 | 3：CDC、复位与异步缓冲 | 未开始 | 待同步器、pulse/toggle、多位握手及异步 FIFO 实践 |
 | 4：网络数据通路与性能 | 未开始 | 待带反压、包边界和 CSR 的小型流水线 |
 | 5：验证与团队工作流 | 未开始 | 待断言、覆盖、现有团队 UVM 框架实践 |

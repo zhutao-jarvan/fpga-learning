@@ -62,6 +62,8 @@ module axi_lite_csr (
     wire wq_valid = waddr_valid && wdata_valid;
     logic [31:0] waddr;
     logic [31:0] wdata;
+    logic [3:0]  wstrb;
+    logic [31:0] ctrl_write_data;
 
     typedef enum logic [1:0] {
         W_IDLE,
@@ -137,6 +139,43 @@ module axi_lite_csr (
         end
     end
 
+    // Merge each enabled WDATA byte into the current CTRL value.
+    // Elaboration：
+    //     “这个设计最终有哪些实例、哪些参数、哪些信号和连接？”
+    // Synthesis：
+    //     “这些已经确定的 RTL 行为要用哪些硬件资源实现？”
+    // for 语法含义跟软件类似，但是作用不一样，接近于 '重复生成相同结构'
+    //      ：例题中 综合工具通常会生成四个并行的8位 2:1 mux:
+    //                      wstrb[0]
+    //                         |
+    //     ctrl_rw[7:0] ---- 0:1 mux ---- ctrl_write_data[7:0]
+    //     wdata[7:0]  -----/
+    //                      wstrb[1]
+    //                         |
+    //     ctrl_rw[15:8] --- 0:1 mux ---- ctrl_write_data[15:8]
+    //     wdata[15:8] ----/
+    //  注意：以上是过程型 for, 还有 生成型 for: 
+    //  generate for 是 elaboration 阶段展开的，用来生成多个模块实例、连续赋值或结构。
+    //     generate
+    //     for (genvar i = 0; i < 4; i++) begin : gen_and
+    //         assign y[i] = a[i] & b[i];
+    //     end
+    //     endgenerate
+    //
+    //     ctrl_write_data[byte_lane*8 +: 8] 中的 'byte_lane*8 +: 8':
+    //          含义是: '起始位 +: 位宽', 此处的含义是：
+    //                 byte_lane 0 ->  [0  + : 8] == [ 7:0]
+    //                 byte_lane 1 ->  [8  + : 8] == [15:0]
+    //                 byte_lane 2 ->  [16 + : 8] == [23:0]
+    //                 byte_lane 3 ->  [24 + : 8] == [31:0]
+    always_comb begin : ctrl_wstrb_merge
+        ctrl_write_data = ctrl_rw;
+        for (int byte_lane = 0; byte_lane < 4; byte_lane++) begin
+            if (wstrb[byte_lane])
+                ctrl_write_data[byte_lane*8 +: 8] = wdata[byte_lane*8 +: 8];
+        end
+    end
+
     always_ff @(posedge clk) begin
         if (rst) begin
             waddr_valid   <= 1'b0;
@@ -154,13 +193,14 @@ module axi_lite_csr (
             // W ch M -> S    
             if (w_transfer && (wdata_valid != 1'b1)) begin
                 wdata <= s_axi_wdata;
+                wstrb <= s_axi_wstrb;
                 wdata_valid <= 1'b1;
             end
 
             // B ch S -> M
             if (wq_valid && (wstate == W_REQ_SENT))
                 if (waddr == CTRL_ADDR)
-                    ctrl_rw <= wdata;
+                    ctrl_rw <= ctrl_write_data;
 
             // handshake and clear 'B ch S -> M'
             if (b_transfer && (wstate == W_REQ_SENT)) begin
