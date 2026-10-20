@@ -170,7 +170,8 @@ module axi_lite_csr_tb;
 
     task automatic run_aw_first;
         begin
-            check(dut.ctrl_rw == 32'h0000_0000, "unexpected dut.ctrl_rw value after reset");
+            check(dut.ctrl_rw === 32'h0000_0000,
+                  "unexpected or unknown dut.ctrl_rw value after reset");
             drive_aw(32'h0000_0000);
             drive_w(32'hCAFE_1234, 4'b1111);
             accept_b();

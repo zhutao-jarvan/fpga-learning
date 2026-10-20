@@ -2,9 +2,9 @@
 
 ## 收尾结论
 
-阶段 2 暂不标记为已完成。九个现有 directed 场景全部通过；首次收尾检查发现的
-`CTRL` 复位值问题已经修复，并由新一轮回归和 FSDB 波形确认。当前只剩新增复位
-checker 的 X-safe 语义需要闭环。
+阶段 2 已完成。九个 directed 场景全部通过；首次收尾检查发现的 `CTRL` 复位值
+问题已经修复，并由回归和 FSDB 波形确认。新增复位 checker 也已改为 X-safe 的
+case equality，最终完整回归通过。
 
 ## 完整 directed 回归
 
@@ -74,8 +74,16 @@ time(ps)  rst  ctrl_rw    status_o
 这证明 RTL 的 CTRL 复位问题已修复。当前第一个 TB 问题是新增检查使用
 `dut.ctrl_rw == 32'h0000_0000`：当 `ctrl_rw` 为 X 时，比较结果也是 X；现有
 `check` task 中的 `if (!condition)` 不保证把 X 判为失败。因此该检查可能无法防止
-原问题回归。将复位值比较改为 X-safe 的 case equality（`===`）后重新运行回归，
-即可关闭这一项。
+原问题回归。2026-10-19 最终收尾时，复位值比较已改为 X-safe 的 case equality：
+
+```systemverilog
+check(dut.ctrl_rw === 32'h0000_0000,
+      "unexpected or unknown dut.ctrl_rw value after reset");
+```
+
+因此 `ctrl_rw` 含有 X/Z 时，整个比较明确返回 0，现有 `check` task 会可靠失败。
+重新编译后九个场景再次全部 PASS，cycle 数仍为 9、10、7、9、11、12、8、15、15。
+阶段 2 的复位契约和 checker 语义均已闭环。
 
 ## 已验证的工程模式
 
@@ -91,8 +99,8 @@ time(ps)  rst  ctrl_rw    status_o
    SLVERR，且读回证明 CTRL 未改变。
 5. **WSTRB byte-lane 合并**：WDATA 与 WSTRB 在同一次 W handshake 保存；四个
    byte lane 分别选择新数据或旧 CTRL 值。未使能 lane 保持不变。
-6. **寄存器属性**：CTRL 是 RW，STATUS 是 RO；STATUS 已定义并验证零复位值。
-   CTRL 的 RW 数据路径已验证，但复位契约正是本次发现的首个未闭环项。
+6. **寄存器属性**：CTRL 是 RW，STATUS 是 RO；二者均已定义并验证零复位值。
+   CTRL 的 RW 数据路径、复位契约及 X-safe checker 均已闭环。
 
 这些模式解决的是软件控制面请求可能分通道、响应可能受反压、寄存器具有不同权限
 以及局部 byte 写入不能破坏其他字段的问题。在网络 FPGA 中，它们会出现在队列
@@ -114,7 +122,7 @@ time(ps)  rst  ctrl_rw    status_o
 
 ## 阶段 3 前的准备
 
-先关闭 CTRL 复位 checker 的 X-safe 语义，再把阶段 2 标记为完成。之后进入阶段 3 时，从最小
-两级同步器开始，明确“单 bit 电平可同步，多 bit 数据不能逐 bit 直接同步”，随后
-再练习 pulse/toggle、多位握手和异步 FIFO。寄存器副作用、读写并发和更完整覆盖
-可作为后续强化项，不要求在进入阶段 3 前扩展成本练习的新功能。
+CTRL 复位 checker 的 X-safe 语义已经关闭，阶段 2 已完成。阶段 3 从最小两级
+同步器开始，明确“单 bit 电平可同步，多 bit 数据不能逐 bit 直接同步”，随后再练习
+pulse/toggle、多位握手和异步 FIFO。寄存器副作用、读写并发和更完整覆盖可作为
+后续强化项，不要求在进入阶段 3 前扩展成本练习的新功能。
