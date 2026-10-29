@@ -22,6 +22,8 @@ BIT_SYNC_DIR    := vcs_build/bit_sync_tb
 BIT_SYNC_FSDB   := $(BIT_SYNC_DIR)/bit_sync.fsdb
 PULSE_TOGGLE_DIR  := vcs_build/pulse_toggle_sync_tb
 PULSE_TOGGLE_FSDB := $(PULSE_TOGGLE_DIR)/pulse_toggle_sync.fsdb
+MULTIBIT_CDC_DIR  := vcs_build/multibit_handshake_cdc_tb
+MULTIBIT_CDC_FSDB := $(MULTIBIT_CDC_DIR)/multibit_handshake_cdc.fsdb
 
 .PHONY: help \
 	axis_fifo axis_fifo_compile axis_fifo_sim axis_fifo_verdi \
@@ -29,7 +31,9 @@ PULSE_TOGGLE_FSDB := $(PULSE_TOGGLE_DIR)/pulse_toggle_sync.fsdb
 	axi_lite_csr axi_lite_csr_compile axi_lite_csr_sim axi_lite_csr_verdi \
 	bit_sync bit_sync_compile bit_sync_sim bit_sync_verdi \
 	pulse_toggle_sync pulse_toggle_sync_compile pulse_toggle_sync_sim \
-	pulse_toggle_sync_verdi
+	pulse_toggle_sync_verdi \
+	multibit_handshake_cdc multibit_handshake_cdc_compile \
+	multibit_handshake_cdc_sim multibit_handshake_cdc_verdi
 
 help:
 	@echo "Available targets:"
@@ -41,6 +45,7 @@ help:
 	@echo "  make axi_lite_csr_sim AXI_CSR_SCENARIO=wstrb"
 	@echo "  make bit_sync       Compile, simulate, and open bit_sync_tb in Verdi"
 	@echo "  make pulse_toggle_sync Compile, simulate, and open pulse_toggle_sync_tb"
+	@echo "  make multibit_handshake_cdc Compile, simulate, and open handshake CDC TB"
 	@echo ""
 	@echo "Each target also has _compile, _sim, and _verdi variants."
 
@@ -164,3 +169,28 @@ pulse_toggle_sync: pulse_toggle_sync_sim
 	$(VERDI) -kdb \
 		-simdir $(PULSE_TOGGLE_DIR)/csrc \
 		-ssf $(PULSE_TOGGLE_FSDB)
+
+multibit_handshake_cdc_compile:
+	mkdir -p $(MULTIBIT_CDC_DIR)
+	$(VCS_CMD) $(VCS_FLAGS) \
+		-top multibit_handshake_cdc_tb \
+		-Mdir=$(MULTIBIT_CDC_DIR)/csrc \
+		-o $(MULTIBIT_CDC_DIR)/simv \
+		-l $(MULTIBIT_CDC_DIR)/compile.log \
+		rtl/cdc/multibit_handshake_cdc.sv verification/tb/multibit_handshake_cdc_tb.sv
+
+multibit_handshake_cdc_sim: multibit_handshake_cdc_compile
+	./$(MULTIBIT_CDC_DIR)/simv \
+		+fsdbfile=$(MULTIBIT_CDC_FSDB) \
+		-l $(MULTIBIT_CDC_DIR)/sim.log
+	@rg -q '^PASS: multibit_handshake_cdc directed checks passed' $(MULTIBIT_CDC_DIR)/sim.log
+
+multibit_handshake_cdc_verdi:
+	$(VERDI) -kdb \
+		-simdir $(MULTIBIT_CDC_DIR)/csrc \
+		-ssf $(MULTIBIT_CDC_FSDB)
+
+multibit_handshake_cdc: multibit_handshake_cdc_sim
+	$(VERDI) -kdb \
+		-simdir $(MULTIBIT_CDC_DIR)/csrc \
+		-ssf $(MULTIBIT_CDC_FSDB)
