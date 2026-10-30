@@ -24,6 +24,8 @@ PULSE_TOGGLE_DIR  := vcs_build/pulse_toggle_sync_tb
 PULSE_TOGGLE_FSDB := $(PULSE_TOGGLE_DIR)/pulse_toggle_sync.fsdb
 MULTIBIT_CDC_DIR  := vcs_build/multibit_handshake_cdc_tb
 MULTIBIT_CDC_FSDB := $(MULTIBIT_CDC_DIR)/multibit_handshake_cdc.fsdb
+ASYNC_FIFO_DIR    := vcs_build/async_fifo_tb
+ASYNC_FIFO_FSDB   := $(ASYNC_FIFO_DIR)/async_fifo.fsdb
 
 .PHONY: help \
 	axis_fifo axis_fifo_compile axis_fifo_sim axis_fifo_verdi \
@@ -33,7 +35,8 @@ MULTIBIT_CDC_FSDB := $(MULTIBIT_CDC_DIR)/multibit_handshake_cdc.fsdb
 	pulse_toggle_sync pulse_toggle_sync_compile pulse_toggle_sync_sim \
 	pulse_toggle_sync_verdi \
 	multibit_handshake_cdc multibit_handshake_cdc_compile \
-	multibit_handshake_cdc_sim multibit_handshake_cdc_verdi
+	multibit_handshake_cdc_sim multibit_handshake_cdc_verdi \
+	async_fifo async_fifo_compile async_fifo_sim async_fifo_verdi
 
 help:
 	@echo "Available targets:"
@@ -46,6 +49,7 @@ help:
 	@echo "  make bit_sync       Compile, simulate, and open bit_sync_tb in Verdi"
 	@echo "  make pulse_toggle_sync Compile, simulate, and open pulse_toggle_sync_tb"
 	@echo "  make multibit_handshake_cdc Compile, simulate, and open handshake CDC TB"
+	@echo "  make async_fifo     Compile, simulate, and open async FIFO TB"
 	@echo ""
 	@echo "Each target also has _compile, _sim, and _verdi variants."
 
@@ -194,3 +198,28 @@ multibit_handshake_cdc: multibit_handshake_cdc_sim
 	$(VERDI) -kdb \
 		-simdir $(MULTIBIT_CDC_DIR)/csrc \
 		-ssf $(MULTIBIT_CDC_FSDB)
+
+async_fifo_compile:
+	mkdir -p $(ASYNC_FIFO_DIR)
+	$(VCS_CMD) $(VCS_FLAGS) \
+		-top async_fifo_tb \
+		-Mdir=$(ASYNC_FIFO_DIR)/csrc \
+		-o $(ASYNC_FIFO_DIR)/simv \
+		-l $(ASYNC_FIFO_DIR)/compile.log \
+		rtl/fifo/async_fifo.sv verification/tb/async_fifo_tb.sv
+
+async_fifo_sim: async_fifo_compile
+	./$(ASYNC_FIFO_DIR)/simv \
+		+fsdbfile=$(ASYNC_FIFO_FSDB) \
+		-l $(ASYNC_FIFO_DIR)/sim.log
+	@rg -q '^PASS: async_fifo directed checks passed' $(ASYNC_FIFO_DIR)/sim.log
+
+async_fifo_verdi:
+	$(VERDI) -kdb \
+		-simdir $(ASYNC_FIFO_DIR)/csrc \
+		-ssf $(ASYNC_FIFO_FSDB)
+
+async_fifo: async_fifo_sim
+	$(VERDI) -kdb \
+		-simdir $(ASYNC_FIFO_DIR)/csrc \
+		-ssf $(ASYNC_FIFO_FSDB)
