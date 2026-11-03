@@ -127,6 +127,7 @@ module async_fifo_tb;
             $value$plusargs("fsdbfile=%s", fsdb_file);
             $fsdbDumpfile(fsdb_file);
             $fsdbDumpvars(0, async_fifo_tb);
+            $fsdbDumpMDA();
         `else
             $dumpfile("async_fifo.vcd");
             $dumpvars(0, async_fifo_tb);

@@ -47,23 +47,6 @@ module async_fifo (
     logic wr_accept;
     logic rd_accept;
 
-    assign wr_gray = wr_bin ^ (wr_bin >> 1);
-    assign rd_gray = rd_bin ^ (rd_bin >> 1);
-
-    always_comb begin : wr_full_block
-        // 满的时候，对于FIFO本身，write指针应该快read指针一圈
-        // binary 最高位不等，低位相等 表示满
-        // gray对应关系是： wr_gray 与 rd_gray_sync_ff2_wr 的高两位取反，低位相等
-        if (~rd_gray_sync_ff2_wr[PTR_WIDTH-1:PTR_WIDTH-2] == wr_gray[PTR_WIDTH-1:PTR_WIDTH-2]
-            && rd_gray_sync_ff2_wr[ADDR_WIDTH-2:0] == wr_gray[ADDR_WIDTH-2:0]) begin
-            wr_full    = 1'b1;
-            wr_ready_o = 1'b0;
-        end else begin
-            wr_full    = 1'b0;
-            wr_ready_o = 1'b1;
-        end
-    end
-
     // Write domain responsibilities:
     // - derive acceptance from wr_valid_i and local not-full state;
     // - on acceptance, write mem at the CURRENT binary write address;
@@ -72,20 +55,48 @@ module async_fifo (
     //   wr_clk registers, regardless of whether a write is attempted;
     // - calculate/register full using the candidate next write pointer.
 
-    assign wr_accept = wr_valid_i & wr_ready_o;
+    assign wr_accept = wr_valid_i && wr_ready_o;
+
+    // next-state 将状态决策放在寄存器前完成，让时钟沿只负责提交结果；这样状态与事务边界对齐，
+    //            对外输出更干净，同时为寄存、流水化和时序优化提供了清晰切分点。
+    // next state of write block
+    logic wr_full_next;
+    logic [PTR_WIDTH-1:0] wr_bin_next;   // wr domain
+    logic [PTR_WIDTH-1:0] wr_gray_next;  // wr domain
+    assign wr_bin_next  = wr_bin + wr_accept;
+    assign wr_gray_next = wr_bin_next ^ (wr_bin_next >> 1);
+    assign wr_ready_o = !wr_full;
+
+    always_comb begin : wr_full_block
+        // 满的时候，对于FIFO本身，write指针应该快read指针一圈
+        // binary 最高位不等，低位相等 表示满
+        // gray对应关系是： wr_gray 与 rd_gray_sync_ff2_wr 的高两位取反，低位相等
+        // wr_gray             next state is wr_gray_next
+        if (~rd_gray_sync_ff2_wr[PTR_WIDTH-1:PTR_WIDTH-2] == wr_gray_next[PTR_WIDTH-1:PTR_WIDTH-2]
+            && rd_gray_sync_ff2_wr[ADDR_WIDTH-2:0] == wr_gray_next[ADDR_WIDTH-2:0]) begin
+            wr_full_next    = 1'b1;
+        end else begin
+            wr_full_next    = 1'b0;
+        end
+    end
+
     always_ff @(posedge wr_clk) begin : write_block
         if (wr_rst) begin
             wr_bin              <=   '0;
+            wr_gray             <=   '0;
             rd_gray_sync_ff1_wr <=   '0;
             rd_gray_sync_ff2_wr <=   '0;
+            wr_full             <= 1'b0;
         end else begin
             if (wr_accept) begin
-                wr_bin <= wr_bin + PTR_WIDTH'(1);
+                wr_bin                      <= wr_bin_next;
+                wr_gray                     <= wr_gray_next;
                 mem[wr_bin[ADDR_WIDTH-1:0]] <= wr_data_i;
             end
 
             rd_gray_sync_ff1_wr <= rd_gray;
             rd_gray_sync_ff2_wr <= rd_gray_sync_ff1_wr;
+            wr_full             <= wr_full_next; // wr_accept and read gray cdc update it
         end
     end
 
@@ -96,31 +107,48 @@ module async_fifo (
     // - continuously synchronize the remote Gray write pointer through two
     //   rd_clk registers, regardless of whether a read is attempted;
     // - calculate/register empty using the candidate next read pointer.
+
+    assign rd_accept = rd_valid_o && rd_ready_i;
+    // next state of read block
+    logic rd_empty_next;
+    logic [PTR_WIDTH-1:0] rd_bin_next;   // rd domain
+    logic [PTR_WIDTH-1:0] rd_gray_next;  // rd domain
+    assign rd_bin_next  = rd_bin + rd_accept;
+    assign rd_gray_next = rd_bin_next ^ (rd_bin_next >> 1);
+
+    always_comb begin : rd_empty_next_stat
+        // rd_gray             next state is rd_gray_next
+        if (rd_gray_next == wr_gray_sync_ff2_rd) begin
+            rd_empty_next   = 1'b1;
+        end else begin
+            rd_empty_next   = 1'b0;
+        end
+    end
+
     always_comb begin : rd_empty_block
-        // 最高位不等，低位相等
-        if (rd_gray == wr_gray_sync_ff2_rd) begin
-            rd_empty   = 1'b1;
+        if (rd_empty) begin
             rd_valid_o = 1'b0;
             rd_data_o  = 8'b0;
         end else begin
-            rd_empty   = 1'b0;
             rd_valid_o = 1'b1;
             rd_data_o  = mem[rd_bin[ADDR_WIDTH-1:0]];
         end
     end
 
-
-    assign rd_accept = rd_valid_o & rd_ready_i;
     always_ff @(posedge rd_clk) begin : read_block
         if (rd_rst) begin
             rd_bin              <=   '0;
+            rd_gray             <=   '0;
             wr_gray_sync_ff1_rd <=   '0;
             wr_gray_sync_ff2_rd <=   '0;
+            rd_empty            <= 1'b1;
         end else begin
             if (rd_accept) begin
-                rd_bin <= rd_bin + PTR_WIDTH'(1);
+                rd_bin      <= rd_bin_next;
+                rd_gray     <= rd_gray_next;
             end
 
+            rd_empty            <= rd_empty_next;
             wr_gray_sync_ff1_rd <= wr_gray;
             wr_gray_sync_ff2_rd <= wr_gray_sync_ff1_rd;
         end
