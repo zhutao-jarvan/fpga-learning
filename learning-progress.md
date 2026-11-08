@@ -1,6 +1,6 @@
 # 总体学习进度
 
-最后更新：2026-11-03。当前状态依据仓库截至 2026-11-03 的学习日志；
+最后更新：2026-11-08。当前状态依据仓库截至 2026-11-08 的学习日志；
 没有记录的练习不推定已经完成。
 
 ## 使用方式
@@ -27,11 +27,11 @@
 
 ## 当前状态
 
-- 学习状态：阶段 3（CDC、复位与异步缓冲）已完成；下一步进入阶段 4。
+- 学习状态：阶段 3（CDC、复位与异步缓冲）已完成；阶段 4（网络数据通路与性能）进行中。
 - 时间安排：基准为每天 1–2 小时、每周 10–15 小时；近期时间较充裕，
   可能每天投入 8 小时。以后可能因项目工作连续暂停半个月至一个月。
-- 当前练习：双触发器电平同步、pulse/toggle、多 bit 握手和最小异步 FIFO
-  均已完成；下一项为最小 ready/valid register slice/skid buffer。
+- 当前练习：最小 8-bit data + 1-bit last 单槽 fall-through elastic buffer 已完成；
+  下一项对比前向寄存的 register slice 与注册反压路径的双槽 skid buffer。
 - 已有证据：Q1–Q40 评估完成；已有 FIFO 与自检 testbench；日志记录首次
   VCS 仿真通过（46 beats）及同步复位、push/pop、反压、回绕和 TLAST 的波形观察。
 - 2026-10-09 已完成：独立追踪 testbench → RTL → 输出的完整 beat；验证
@@ -135,6 +135,11 @@
   通过 28 笔事务；逐拍解释 76–135 ns 的单笔写读、156–204 ns 写满、220 ns
   满写拒绝及 235–252 ns full 保守解除。记录见
   `notes/2026-11-03-async-fifo.md`。阶段 3 的代表性 CDC 交付物完成。
+- 2026-11-08 完成阶段 4 首项：用户实现单槽 fall-through elastic buffer，参与将
+  TB 从前向寄存假设调整为 same-edge bypass 规格，定位并修复 FULL 反压条件，补齐
+  组合默认赋值并统一阻塞赋值。VCS directed TB 通过 13 笔事务；用户已在 Verdi
+  中观察并理解单笔旁路、连续满速、一拍停顿、长反压及 drain/refill。记录见
+  `notes/2026-11-08-fall-through-elastic-buffer-spec.md`。
 
 ## 阶段总览
 
@@ -143,7 +148,7 @@
 | 1：RTL、仿真与波形 | 已完成 | FIFO 波形追踪、满载吞吐修改、VCS 自检、最小 SVA、FSM 和同步复位定向波形均有证据 |
 | 2：调试寄存器与控制面 | 已完成 | CTRL 零复位、X-safe checker、九场景回归及工程复盘均已闭环 |
 | 3：CDC、复位与异步缓冲 | 已完成 | 单 bit 电平、pulse/toggle、多 bit 握手及异步 FIFO 均有 RTL、directed TB 和波形解释证据 |
-| 4：网络数据通路与性能 | 未开始 | 待带反压、包边界和 CSR 的小型流水线 |
+| 4：网络数据通路与性能 | 进行中 | 单槽 8-bit + last fall-through elastic buffer 已完成；下一项为 registered slice 与双槽 skid buffer 对比 |
 | 5：验证与团队工作流 | 未开始 | 待断言、覆盖、现有团队 UVM 框架实践 |
 | 6：综合、时序与综合项目 | 未开始 | 待集成项目和综合/时序报告 |
 
@@ -158,11 +163,9 @@
 
 按下面顺序推进，每项通过解释、代码或测试结果确认后再安排下一项：
 
-1. 进入阶段 4，从最小 ready/valid register slice/skid buffer 开始，理解满速传输、
-   单拍停顿、内部暂存和反压路径切分。
-2. 将 register slice/skid buffer 扩展到带 `last` 的小型包流，检查包边界在停顿和
-   并发接受时保持一致。
-3. 逐步组合仲裁、mux/demux 和有限 FIFO，形成能够持续传输并传播反压的小型网络
+1. 对比前向寄存的 register slice 和注册反压路径的双槽 skid buffer，理解组合路径、
+   缓冲容量、首笔延迟和时序切分之间的权衡。
+2. 逐步组合仲裁、mux/demux 和有限 FIFO，形成能够持续传输并传播反压的小型网络
    数据通路；CSR 和跨域状态在先修机制明确后加入。
 
 每次学习仍优先采用“一个场景 → 用户观察和解释 → 提示与验证”的节奏。

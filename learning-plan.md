@@ -187,7 +187,8 @@ Focus:
 
 - packet-oriented streaming, SOP/EOP or TLAST metadata, empty/keep information,
   and error metadata;
-- skid buffers, register slices, arbitration, mux/demux, width adaptation, packet
+- fall-through elastic buffers, registered slices, skid buffers, arbitration,
+  mux/demux, width adaptation, packet
   FIFOs, packet drop policy, and flow control;
 - latency versus throughput, one-beat-per-cycle operation, combinational ready
   paths, and pipeline placement;

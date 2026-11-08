@@ -5,3 +5,4 @@ Subfolders:
 - timing/
 - cdc/
 - fifo/
+- stream/

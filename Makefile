@@ -6,8 +6,13 @@ VCS   ?= vcs
 VERDI ?= verdi
 
 # The installed VCS launcher uses "#!/bin/sh -h", which this host's /bin/sh
-# rejects. Running that launcher explicitly with bash preserves the VCS options.
-VCS_CMD ?= bash $(shell command -v $(VCS))
+# rejects. Run it with bash and hide the harmless diagnostic emitted when an
+# internal VCS helper still executes a Bash-only redirect through /bin/sh.
+VCS_CMD ?= bash $(shell command -v $(VCS)) \
+	2> >(sed '/^sh: 1: Syntax error: Bad fd number$$/d' >&2)
+
+# The installed Verdi wrapper declares /bin/sh but uses Bash arrays and [[ ]].
+VERDI_CMD ?= bash $(shell command -v $(VERDI))
 
 VCS_FLAGS := -full64 -sverilog -kdb -debug_access+all \
 	-timescale=1ns/1ps +define+ENABLE_FSDB
@@ -26,6 +31,8 @@ MULTIBIT_CDC_DIR  := vcs_build/multibit_handshake_cdc_tb
 MULTIBIT_CDC_FSDB := $(MULTIBIT_CDC_DIR)/multibit_handshake_cdc.fsdb
 ASYNC_FIFO_DIR    := vcs_build/async_fifo_tb
 ASYNC_FIFO_FSDB   := $(ASYNC_FIFO_DIR)/async_fifo.fsdb
+RV_SLICE_DIR      := vcs_build/rv_register_slice_tb
+RV_SLICE_FSDB     := $(RV_SLICE_DIR)/rv_register_slice.fsdb
 
 .PHONY: help \
 	axis_fifo axis_fifo_compile axis_fifo_sim axis_fifo_verdi \
@@ -36,7 +43,9 @@ ASYNC_FIFO_FSDB   := $(ASYNC_FIFO_DIR)/async_fifo.fsdb
 	pulse_toggle_sync_verdi \
 	multibit_handshake_cdc multibit_handshake_cdc_compile \
 	multibit_handshake_cdc_sim multibit_handshake_cdc_verdi \
-	async_fifo async_fifo_compile async_fifo_sim async_fifo_verdi
+	async_fifo async_fifo_compile async_fifo_sim async_fifo_verdi \
+	rv_register_slice rv_register_slice_compile rv_register_slice_sim \
+	rv_register_slice_verdi
 
 help:
 	@echo "Available targets:"
@@ -50,6 +59,7 @@ help:
 	@echo "  make pulse_toggle_sync Compile, simulate, and open pulse_toggle_sync_tb"
 	@echo "  make multibit_handshake_cdc Compile, simulate, and open handshake CDC TB"
 	@echo "  make async_fifo     Compile, simulate, and open async FIFO TB"
+	@echo "  make rv_register_slice Compile, simulate, and open fall-through buffer TB"
 	@echo ""
 	@echo "Each target also has _compile, _sim, and _verdi variants."
 
@@ -68,12 +78,12 @@ axis_fifo_sim: axis_fifo_compile
 		-l $(AXIS_FIFO_DIR)/sim.log
 
 axis_fifo_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXIS_FIFO_DIR)/csrc \
 		-ssf $(AXIS_FIFO_DIR)/axis_fifo.fsdb
 
 axis_fifo: axis_fifo_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXIS_FIFO_DIR)/csrc \
 		-ssf $(AXIS_FIFO_DIR)/axis_fifo.fsdb
 
@@ -92,12 +102,12 @@ axis_fifo_fsm_sim: axis_fifo_fsm_compile
 		-l $(AXIS_FSM_DIR)/sim.log
 
 axis_fifo_fsm_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXIS_FSM_DIR)/csrc \
 		-ssf $(AXIS_FSM_DIR)/axis_fifo_fsm.fsdb
 
 axis_fifo_fsm: axis_fifo_fsm_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXIS_FSM_DIR)/csrc \
 		-ssf $(AXIS_FSM_DIR)/axis_fifo_fsm.fsdb
 
@@ -117,12 +127,12 @@ axi_lite_csr_sim: axi_lite_csr_compile
 		-l $(AXI_CSR_SIM_LOG)
 
 axi_lite_csr_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXI_CSR_DIR)/csrc \
 		-ssf $(AXI_CSR_FSDB)
 
 axi_lite_csr: axi_lite_csr_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(AXI_CSR_DIR)/csrc \
 		-ssf $(AXI_CSR_FSDB)
 
@@ -141,12 +151,12 @@ bit_sync_sim: bit_sync_compile
 		-l $(BIT_SYNC_DIR)/sim.log
 
 bit_sync_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(BIT_SYNC_DIR)/csrc \
 		-ssf $(BIT_SYNC_FSDB)
 
 bit_sync: bit_sync_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(BIT_SYNC_DIR)/csrc \
 		-ssf $(BIT_SYNC_FSDB)
 
@@ -165,12 +175,12 @@ pulse_toggle_sync_sim: pulse_toggle_sync_compile
 		-l $(PULSE_TOGGLE_DIR)/sim.log
 
 pulse_toggle_sync_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(PULSE_TOGGLE_DIR)/csrc \
 		-ssf $(PULSE_TOGGLE_FSDB)
 
 pulse_toggle_sync: pulse_toggle_sync_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(PULSE_TOGGLE_DIR)/csrc \
 		-ssf $(PULSE_TOGGLE_FSDB)
 
@@ -187,15 +197,15 @@ multibit_handshake_cdc_sim: multibit_handshake_cdc_compile
 	./$(MULTIBIT_CDC_DIR)/simv \
 		+fsdbfile=$(MULTIBIT_CDC_FSDB) \
 		-l $(MULTIBIT_CDC_DIR)/sim.log
-	@rg -q '^PASS: multibit_handshake_cdc directed checks passed' $(MULTIBIT_CDC_DIR)/sim.log
+	@grep -q '^PASS: multibit_handshake_cdc directed checks passed' $(MULTIBIT_CDC_DIR)/sim.log
 
 multibit_handshake_cdc_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(MULTIBIT_CDC_DIR)/csrc \
 		-ssf $(MULTIBIT_CDC_FSDB)
 
 multibit_handshake_cdc: multibit_handshake_cdc_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(MULTIBIT_CDC_DIR)/csrc \
 		-ssf $(MULTIBIT_CDC_FSDB)
 
@@ -212,14 +222,39 @@ async_fifo_sim: async_fifo_compile
 	./$(ASYNC_FIFO_DIR)/simv \
 		+fsdbfile=$(ASYNC_FIFO_FSDB) \
 		-l $(ASYNC_FIFO_DIR)/sim.log
-	@rg -q '^PASS: async_fifo directed checks passed' $(ASYNC_FIFO_DIR)/sim.log
+	@grep -q '^PASS: async_fifo directed checks passed' $(ASYNC_FIFO_DIR)/sim.log
 
 async_fifo_verdi:
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(ASYNC_FIFO_DIR)/csrc \
 		-ssf $(ASYNC_FIFO_FSDB)
 
 async_fifo: async_fifo_sim
-	$(VERDI) -kdb \
+	$(VERDI_CMD) -kdb \
 		-simdir $(ASYNC_FIFO_DIR)/csrc \
 		-ssf $(ASYNC_FIFO_FSDB)
+
+rv_register_slice_compile:
+	mkdir -p $(RV_SLICE_DIR)
+	$(VCS_CMD) $(VCS_FLAGS) \
+		-top rv_register_slice_tb \
+		-Mdir=$(RV_SLICE_DIR)/csrc \
+		-o $(RV_SLICE_DIR)/simv \
+		-l $(RV_SLICE_DIR)/compile.log \
+		rtl/stream/rv_register_slice.sv verification/tb/rv_register_slice_tb.sv
+
+rv_register_slice_sim: rv_register_slice_compile
+	./$(RV_SLICE_DIR)/simv \
+		+fsdbfile=$(RV_SLICE_FSDB) \
+		-l $(RV_SLICE_DIR)/sim.log
+	@grep -q '^PASS: rv_register_slice directed checks passed' $(RV_SLICE_DIR)/sim.log
+
+rv_register_slice_verdi:
+	$(VERDI_CMD) -kdb \
+		-simdir $(RV_SLICE_DIR)/csrc \
+		-ssf $(RV_SLICE_FSDB)
+
+rv_register_slice: rv_register_slice_sim
+	$(VERDI_CMD) -kdb \
+		-simdir $(RV_SLICE_DIR)/csrc \
+		-ssf $(RV_SLICE_FSDB)
