@@ -31,8 +31,10 @@ MULTIBIT_CDC_DIR  := vcs_build/multibit_handshake_cdc_tb
 MULTIBIT_CDC_FSDB := $(MULTIBIT_CDC_DIR)/multibit_handshake_cdc.fsdb
 ASYNC_FIFO_DIR    := vcs_build/async_fifo_tb
 ASYNC_FIFO_FSDB   := $(ASYNC_FIFO_DIR)/async_fifo.fsdb
-RV_SLICE_DIR      := vcs_build/rv_register_slice_tb
-RV_SLICE_FSDB     := $(RV_SLICE_DIR)/rv_register_slice.fsdb
+RV_FT_BUF_DIR     := vcs_build/rv_fallthrough_elastic_buffer_tb
+RV_FT_BUF_FSDB    := $(RV_FT_BUF_DIR)/rv_fallthrough_elastic_buffer.fsdb
+RV_SKID_DIR       := vcs_build/rv_registered_ready_skid_buffer_tb
+RV_SKID_FSDB      := $(RV_SKID_DIR)/rv_registered_ready_skid_buffer.fsdb
 
 .PHONY: help \
 	axis_fifo axis_fifo_compile axis_fifo_sim axis_fifo_verdi \
@@ -44,8 +46,10 @@ RV_SLICE_FSDB     := $(RV_SLICE_DIR)/rv_register_slice.fsdb
 	multibit_handshake_cdc multibit_handshake_cdc_compile \
 	multibit_handshake_cdc_sim multibit_handshake_cdc_verdi \
 	async_fifo async_fifo_compile async_fifo_sim async_fifo_verdi \
-	rv_register_slice rv_register_slice_compile rv_register_slice_sim \
-	rv_register_slice_verdi
+	rv_fallthrough_elastic_buffer rv_fallthrough_elastic_buffer_compile \
+	rv_fallthrough_elastic_buffer_sim rv_fallthrough_elastic_buffer_verdi \
+	rv_registered_ready_skid_buffer rv_registered_ready_skid_buffer_compile \
+	rv_registered_ready_skid_buffer_sim rv_registered_ready_skid_buffer_verdi
 
 help:
 	@echo "Available targets:"
@@ -59,7 +63,8 @@ help:
 	@echo "  make pulse_toggle_sync Compile, simulate, and open pulse_toggle_sync_tb"
 	@echo "  make multibit_handshake_cdc Compile, simulate, and open handshake CDC TB"
 	@echo "  make async_fifo     Compile, simulate, and open async FIFO TB"
-	@echo "  make rv_register_slice Compile, simulate, and open fall-through buffer TB"
+	@echo "  make rv_fallthrough_elastic_buffer Compile, simulate, and open fall-through buffer TB"
+	@echo "  make rv_registered_ready_skid_buffer Compile, simulate, and open skid-buffer TB"
 	@echo ""
 	@echo "Each target also has _compile, _sim, and _verdi variants."
 
@@ -234,27 +239,54 @@ async_fifo: async_fifo_sim
 		-simdir $(ASYNC_FIFO_DIR)/csrc \
 		-ssf $(ASYNC_FIFO_FSDB)
 
-rv_register_slice_compile:
-	mkdir -p $(RV_SLICE_DIR)
+rv_fallthrough_elastic_buffer_compile:
+	mkdir -p $(RV_FT_BUF_DIR)
 	$(VCS_CMD) $(VCS_FLAGS) \
-		-top rv_register_slice_tb \
-		-Mdir=$(RV_SLICE_DIR)/csrc \
-		-o $(RV_SLICE_DIR)/simv \
-		-l $(RV_SLICE_DIR)/compile.log \
-		rtl/stream/rv_register_slice.sv verification/tb/rv_register_slice_tb.sv
+		-top rv_fallthrough_elastic_buffer_tb \
+		-Mdir=$(RV_FT_BUF_DIR)/csrc \
+		-o $(RV_FT_BUF_DIR)/simv \
+		-l $(RV_FT_BUF_DIR)/compile.log \
+		rtl/stream/rv_fallthrough_elastic_buffer.sv verification/tb/rv_fallthrough_elastic_buffer_tb.sv
 
-rv_register_slice_sim: rv_register_slice_compile
-	./$(RV_SLICE_DIR)/simv \
-		+fsdbfile=$(RV_SLICE_FSDB) \
-		-l $(RV_SLICE_DIR)/sim.log
-	@grep -q '^PASS: rv_register_slice directed checks passed' $(RV_SLICE_DIR)/sim.log
+rv_fallthrough_elastic_buffer_sim: rv_fallthrough_elastic_buffer_compile
+	./$(RV_FT_BUF_DIR)/simv \
+		+fsdbfile=$(RV_FT_BUF_FSDB) \
+		-l $(RV_FT_BUF_DIR)/sim.log
+	@grep -q '^PASS: rv_fallthrough_elastic_buffer directed checks passed' $(RV_FT_BUF_DIR)/sim.log
 
-rv_register_slice_verdi:
+rv_fallthrough_elastic_buffer_verdi:
 	$(VERDI_CMD) -kdb \
-		-simdir $(RV_SLICE_DIR)/csrc \
-		-ssf $(RV_SLICE_FSDB)
+		-simdir $(RV_FT_BUF_DIR)/csrc \
+		-ssf $(RV_FT_BUF_FSDB)
 
-rv_register_slice: rv_register_slice_sim
+rv_fallthrough_elastic_buffer: rv_fallthrough_elastic_buffer_sim
 	$(VERDI_CMD) -kdb \
-		-simdir $(RV_SLICE_DIR)/csrc \
-		-ssf $(RV_SLICE_FSDB)
+		-simdir $(RV_FT_BUF_DIR)/csrc \
+		-ssf $(RV_FT_BUF_FSDB)
+
+rv_registered_ready_skid_buffer_compile:
+	mkdir -p $(RV_SKID_DIR)
+	$(VCS_CMD) $(VCS_FLAGS) \
+		-top rv_registered_ready_skid_buffer_tb \
+		-Mdir=$(RV_SKID_DIR)/csrc \
+		-o $(RV_SKID_DIR)/simv \
+		-l $(RV_SKID_DIR)/compile.log \
+		rtl/stream/rv_registered_ready_skid_buffer.sv \
+		verification/tb/rv_registered_ready_skid_buffer_tb.sv
+
+rv_registered_ready_skid_buffer_sim: rv_registered_ready_skid_buffer_compile
+	./$(RV_SKID_DIR)/simv \
+		+fsdbfile=$(RV_SKID_FSDB) \
+		-l $(RV_SKID_DIR)/sim.log
+	@grep -q '^PASS: rv_registered_ready_skid_buffer directed checks passed' \
+		$(RV_SKID_DIR)/sim.log
+
+rv_registered_ready_skid_buffer_verdi:
+	$(VERDI_CMD) -kdb \
+		-simdir $(RV_SKID_DIR)/csrc \
+		-ssf $(RV_SKID_FSDB)
+
+rv_registered_ready_skid_buffer: rv_registered_ready_skid_buffer_sim
+	$(VERDI_CMD) -kdb \
+		-simdir $(RV_SKID_DIR)/csrc \
+		-ssf $(RV_SKID_FSDB)

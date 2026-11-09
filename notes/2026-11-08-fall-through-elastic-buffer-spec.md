@@ -39,10 +39,10 @@ Scoreboard 在同一采样沿先记录被接受的输入，再检查被接受的
 
 ## 验证与波形证据
 
-`make rv_register_slice_sim` 最终报告：
+`make rv_fallthrough_elastic_buffer_sim` 最终报告：
 
 ```text
-PASS: rv_register_slice directed checks passed (13 transfers)
+PASS: rv_fallthrough_elastic_buffer directed checks passed (13 transfers)
 ```
 
 TB 覆盖复位、单笔零延迟旁路、连续八拍满速传输、一拍输出停顿、长时间反压、

@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module rv_register_slice_tb;
+module rv_fallthrough_elastic_buffer_tb;
     logic       clk = 1'b0;
     logic       rst = 1'b1;
 
@@ -26,7 +26,7 @@ module rv_register_slice_tb;
     logic [7:0] previous_stall_data = 8'h00;
     logic       previous_stall_last = 1'b0;
 
-    rv_register_slice dut (.*);
+    rv_fallthrough_elastic_buffer dut (.*);
 
     always #5 clk = ~clk;
 
@@ -121,13 +121,13 @@ module rv_register_slice_tb;
 
         `ifdef ENABLE_FSDB
             string fsdb_file;
-            fsdb_file = "rv_register_slice.fsdb";
+            fsdb_file = "rv_fallthrough_elastic_buffer.fsdb";
             $value$plusargs("fsdbfile=%s", fsdb_file);
             $fsdbDumpfile(fsdb_file);
-            $fsdbDumpvars(0, rv_register_slice_tb);
+            $fsdbDumpvars(0, rv_fallthrough_elastic_buffer_tb);
         `else
-            $dumpfile("rv_register_slice.vcd");
-            $dumpvars(0, rv_register_slice_tb);
+            $dumpfile("rv_fallthrough_elastic_buffer.vcd");
+            $dumpvars(0, rv_fallthrough_elastic_buffer_tb);
         `endif
 
         // 1. Reset state: empty output and capacity available upstream.
@@ -258,14 +258,14 @@ module rv_register_slice_tb;
               "test ended with missing, duplicate, or undrained beats");
         check(m_valid_o === 1'b0, "buffer was not empty at test end");
         if (errors != 0)
-            $fatal(1, "rv_register_slice: %0d error(s)", errors);
-        $display("PASS: rv_register_slice directed checks passed (%0d transfers)",
+            $fatal(1, "rv_fallthrough_elastic_buffer: %0d error(s)", errors);
+        $display("PASS: rv_fallthrough_elastic_buffer directed checks passed (%0d transfers)",
                  output_count);
         $finish;
     end
 
     initial begin
         repeat (200) @(posedge clk);
-        $fatal(1, "rv_register_slice global timeout");
+        $fatal(1, "rv_fallthrough_elastic_buffer global timeout");
     end
 endmodule

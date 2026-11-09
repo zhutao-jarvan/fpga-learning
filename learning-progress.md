@@ -1,6 +1,6 @@
 # 总体学习进度
 
-最后更新：2026-11-08。当前状态依据仓库截至 2026-11-08 的学习日志；
+最后更新：2026-11-09。当前状态依据仓库截至 2026-11-09 的学习日志；
 没有记录的练习不推定已经完成。
 
 ## 使用方式
@@ -30,8 +30,8 @@
 - 学习状态：阶段 3（CDC、复位与异步缓冲）已完成；阶段 4（网络数据通路与性能）进行中。
 - 时间安排：基准为每天 1–2 小时、每周 10–15 小时；近期时间较充裕，
   可能每天投入 8 小时。以后可能因项目工作连续暂停半个月至一个月。
-- 当前练习：最小 8-bit data + 1-bit last 单槽 fall-through elastic buffer 已完成；
-  下一项对比前向寄存的 register slice 与注册反压路径的双槽 skid buffer。
+- 当前练习：最小 8-bit data + 1-bit last 单槽 fall-through elastic buffer，以及
+  注册反压路径的双槽 skid buffer 均已完成；下一项逐步组合仲裁和 mux/demux。
 - 已有证据：Q1–Q40 评估完成；已有 FIFO 与自检 testbench；日志记录首次
   VCS 仿真通过（46 beats）及同步复位、push/pop、反压、回绕和 TLAST 的波形观察。
 - 2026-10-09 已完成：独立追踪 testbench → RTL → 输出的完整 beat；验证
@@ -140,6 +140,11 @@
   组合默认赋值并统一阻塞赋值。VCS directed TB 通过 13 笔事务；用户已在 Verdi
   中观察并理解单笔旁路、连续满速、一拍停顿、长反压及 drain/refill。记录见
   `notes/2026-11-08-fall-through-elastic-buffer-spec.md`。
+- 2026-11-09 完成双槽 registered-ready skid buffer：用户补全 EMPTY/ONE/TWO
+  输出译码、四种 ONE handshake 转换及 head/tail payload 移动；确认反向 ready
+  组合路径被切断、第二槽吸收一拍刹车距离、首笔延迟一拍且稳态每拍一笔。
+  VCS directed TB 通过 11 笔事务，覆盖满速、一拍停顿、长反压及 TWO 释放。
+  记录见 `notes/2026-11-09-registered-ready-skid-buffer.md`。
 
 ## 阶段总览
 
@@ -148,7 +153,7 @@
 | 1：RTL、仿真与波形 | 已完成 | FIFO 波形追踪、满载吞吐修改、VCS 自检、最小 SVA、FSM 和同步复位定向波形均有证据 |
 | 2：调试寄存器与控制面 | 已完成 | CTRL 零复位、X-safe checker、九场景回归及工程复盘均已闭环 |
 | 3：CDC、复位与异步缓冲 | 已完成 | 单 bit 电平、pulse/toggle、多 bit 握手及异步 FIFO 均有 RTL、directed TB 和波形解释证据 |
-| 4：网络数据通路与性能 | 进行中 | 单槽 8-bit + last fall-through elastic buffer 已完成；下一项为 registered slice 与双槽 skid buffer 对比 |
+| 4：网络数据通路与性能 | 进行中 | fall-through buffer 与双槽 registered-ready skid buffer 已完成；下一项为仲裁和 mux/demux |
 | 5：验证与团队工作流 | 未开始 | 待断言、覆盖、现有团队 UVM 框架实践 |
 | 6：综合、时序与综合项目 | 未开始 | 待集成项目和综合/时序报告 |
 
@@ -163,9 +168,7 @@
 
 按下面顺序推进，每项通过解释、代码或测试结果确认后再安排下一项：
 
-1. 对比前向寄存的 register slice 和注册反压路径的双槽 skid buffer，理解组合路径、
-   缓冲容量、首笔延迟和时序切分之间的权衡。
-2. 逐步组合仲裁、mux/demux 和有限 FIFO，形成能够持续传输并传播反压的小型网络
+1. 逐步组合仲裁、mux/demux 和有限 FIFO，形成能够持续传输并传播反压的小型网络
    数据通路；CSR 和跨域状态在先修机制明确后加入。
 
 每次学习仍优先采用“一个场景 → 用户观察和解释 → 提示与验证”的节奏。
@@ -205,5 +208,7 @@
   从零实现与评审修正、三事务 PASS、完整保持窗口和 32 ns 往返波形解释、工程边界。
 - [2026-11-03 最小异步 FIFO](notes/2026-11-03-async-fifo.md)：
   Binary/Gray 指针、注册 full/empty、28 笔 directed TB、边界恢复波形及工程复盘。
+- [2026-11-09 双槽 Registered-ready Skid Buffer](notes/2026-11-09-registered-ready-skid-buffer.md)：
+  EMPTY/ONE/TWO、反压路径切分、一拍刹车距离、11 笔 directed TB 及工程复盘。
 - [工具环境](notes/2026-10-08-tool-environment.md)：两台机器与 NFS 共享工作流。
 - 2026-10-09：确认采用弹性学习节奏；完成 FIFO 状态分析、最小 SVA 和 MMIO/CSR 预习。
